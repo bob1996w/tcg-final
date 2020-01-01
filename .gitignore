@@ -1,0 +1,6 @@
+target/**
+.vscode/**
+*.log.txt
+*.log.game
+*.log.*
+.DS_Store
