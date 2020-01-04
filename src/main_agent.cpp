@@ -1,4 +1,6 @@
+// basic headers
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // for socket server
@@ -6,6 +8,10 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+
+// for forking
+#include <cerrno>
+#include <csignal>
 
 // commands enumerate
 enum COMMANDS {
@@ -30,39 +36,60 @@ enum COMMANDS {
 };
 
 // socket server constants
-#define SERVER_PATH "/tmp/server"
+#ifdef SERVER2
+    #define SERVER_PATH "/tmp/server2"
+#else
+    #define SERVER_PATH "/tmp/server"
+#endif
 #define BUFFER_LENGTH 1024
 #define FALSE 0
 
 int main() {
+    // always unlink previous session's port to prevent "address already in use"
+    unlink(SERVER_PATH);
+
+    // spawn a child process to run the helper program
+    pid_t pid = fork();
+    if (pid == 0) {
+        // is child process
+#ifdef SERVER2
+        static char *argv[] = {"helper2", NULL};
+#else
+        static char *argv[] = {"helper", NULL};
+#endif
+
+#ifdef SERVER2
+        execlp("/Users/bobwang/Documents/MasterTwo/tcg/final/r07922018/target/helper2", nullptr);
+#else
+        execlp("/Users/bobwang/Documents/MasterTwo/tcg/final/r07922018/target/helper", nullptr);
+#endif
+        
+        fprintf(stderr, "Error occured when calling helper program: %d\n", errno);
+        fprintf(stderr, "%s\n", strerror(errno));
+        return 0;
+    }
+    // is parent process
+
     // data for java client
-    char read[1024], write[1024], output[1024], *token;
+    char read[1024], read_cpy[1024], output[1024], *token;
     const char *data[10];
     int id; 
     // bool isFailed;
 
+    fprintf(stderr, "server path = %s\n", SERVER_PATH);
     
     do {
         
         // read command
         fgets(read, 1024, stdin);
-        fprintf(stderr, "%s", read);
+        strcpy(read_cpy, read);
+        fprintf(stderr, "server>%s", read);
+        fflush(stderr);
         // remove newline(\n)
         read[strlen(read) - 1] = '\0';
         // get command id
-        token = strtok(read, " ");
+        token = strtok(read_cpy, " ");
         sscanf(token, "%d", &id);
-        // // get command name
-        // token = strtok(NULL, " ");
-        // // get command data
-        // int i = 0;
-        // while ((token = strtok(NULL, " ")) != NULL) {
-        //     data[i++] = token;
-        // }
-        
-        
-
-        write[0] = '\0';  // empty the char array
 
         //TODO: Call AI Function
         // data for socket server with client (AI)
@@ -100,19 +127,20 @@ int main() {
         }
         length = BUFFER_LENGTH;
 
-        // 1: listen from helper's call
+        buffer[0] = '\0';  // empty the char array
+        // 1: listen from helper's call        
         rc = recv(sd2, buffer, sizeof(buffer), 0);
         if (rc < 0)
         {
             perror("recv() failed");
             // break;
         } 
-        printf("received %d bytes, %s\n", rc, buffer);
+        // fprintf(stderr, "received %d bytes, %s\n", rc, buffer);
         if (rc == 0 ||
             rc < sizeof(buffer))
         {
-            printf("The client closed the connection before all of the\n");
-            printf("data was sent\n");
+            fprintf(stderr, "The client closed the connection before all of the\n");
+            fprintf(stderr, "data was sent\n");
             // break;
         }
         rc = send(sd2, read, sizeof(read), 0);
@@ -123,18 +151,19 @@ int main() {
         }
 
         // 2. receive helper's answer
+        buffer[0] = '\0';
         rc = recv(sd2, buffer, sizeof(buffer), 0);
         if (rc < 0)
         {
             perror("recv() failed");
             // break;
         } 
-        printf("received %d bytes, %s\n", rc, buffer);
+        // fprintf(stderr, "received %d bytes, %s\n", rc, buffer);
         if (rc == 0 ||
             rc < sizeof(buffer))
         {
-            printf("The client closed the connection before all of the\n");
-            printf("data was sent\n");
+            fprintf(stderr, "The client closed the connection before all of the\n");
+            fprintf(stderr, "data was sent\n");
             // break;
         }
         rc = send(sd2, read, sizeof(read), 0);
@@ -157,6 +186,11 @@ int main() {
         fflush(stderr);
 
     } while (id != QUIT);
+    
+    // kill the child, and wait for the child to exit with 0
+    kill(pid, SIGTERM);
+    waitpid(pid,0,0);
+    printf("after wait");
     
     return 0;
 }

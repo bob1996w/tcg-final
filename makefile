@@ -4,7 +4,9 @@ DEL = rm -f
 all: src/main_agent.cpp src/main_helper.cpp
 	mkdir -p target
 	$(CPLUSPLUS) src/main_agent.cpp -o target/agent
-	$(CPLUSPLUS) src/main_helper.cpp -o target/helper
+	$(CPLUSPLUS) -D SERVER2 src/main_agent.cpp -o target/agent2
+	$(CPLUSPLUS) src/main_helper.cpp src/BobAI.cpp -o target/helper
+	$(CPLUSPLUS) -D SERVER2 src/main_helper.cpp src/BobAI.cpp -o target/helper2
 
 example: src/main.cpp src/MyAI.cpp
 	mkdir -p target
