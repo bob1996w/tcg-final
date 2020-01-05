@@ -1,5 +1,4 @@
-#ifndef __BOBAI__
-#define __BOBAI__
+#pragma once
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,5 +91,3 @@ private:
     bool Referee(int* Board, int Startoint, int EndPoint, int color);
     int Expand(int* Board, int color, int* Result);
 };
-
-#endif
