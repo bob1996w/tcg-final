@@ -13,6 +13,8 @@
 #include <cerrno>
 #include <csignal>
 
+void signalHandler(int signal); 
+
 // commands enumerate
 enum COMMANDS {
     PROTOCOL_VERSION = 0,  // 0
@@ -43,6 +45,8 @@ enum COMMANDS {
 #endif
 #define BUFFER_LENGTH 1024
 #define FALSE 0
+
+volatile std::sig_atomic_t gSignalStatus;
 
 int main() {
     // always unlink previous session's port to prevent "address already in use"
@@ -78,6 +82,10 @@ int main() {
 
     fprintf(stderr, "server path = %s\n", SERVER_PATH);
     
+    // add signal handler
+    signal(SIGTERM, signalHandler);
+    signal(SIGABRT, signalHandler);
+
     do {
         
         // read command
@@ -193,4 +201,11 @@ int main() {
     printf("after wait");
     
     return 0;
+}
+
+void signalHandler(int signal) {
+    gSignalStatus = signal;
+    fprintf(stdout, "SignalValue: %d\n", gSignalStatus);
+    fflush(stdout);
+    exit(signal);
 }

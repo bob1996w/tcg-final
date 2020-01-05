@@ -79,6 +79,9 @@ int main(int argc, char *argv[]) {
             fflush(stderr);
             break;
         }
+        if (getppid() == 1) {
+            break;
+        }
         usleep(sleepMicroSecondBetweenCommand);
     }
     fflush(stdout);
