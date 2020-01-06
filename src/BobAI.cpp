@@ -52,10 +52,12 @@ bool BobAI::boardsize(const char* data[], char* response) {
 }
 
 bool BobAI::reset_board(const char* data[], char* response) {
-    this->Color = 2;
-    this->Red_Time = -1;    // known
-    this->Black_Time = -1;  // known
-    this->initBoardState();
+    // this->Color = 2;
+    // this->Red_Time = -1;    // known
+    // this->Black_Time = -1;  // known
+    // this->initBoardState();
+    myBoard.initBoard();
+    myBoard.printBoard();
     return 0;
 }
 
@@ -68,31 +70,33 @@ bool BobAI::num_moves_to_draw(const char* data[], char* response) {
 }
 
 bool BobAI::move(const char* data[], char* response) {
-    char move[6];
-    sprintf(move, "%s-%s", data[0], data[1]);
-    this->MakeMove(move);
+    char move[5];
+    sprintf(move, "%s%s", data[0], data[1]);
+    fprintf(stdout, "bobai receive move: %s\n", move);
+    fflush(stdout);
+    myBoard.applyMove(move);
     return 0;
 }
 
 bool BobAI::flip(const char* data[], char* response) {
-    char move[6];
-    sprintf(move, "%s(%s)", data[0], data[1]);
-    this->MakeMove(move);
+    char move[4];
+    sprintf(move, "%s%s", data[0], data[1]);
+    myBoard.applyFlip(move);
     return 0;
 }
 
 bool BobAI::genmove(const char* data[], char* response) {
     // set color
     if (!strcmp(data[0], "red")) {
-        this->Color = RED;
+        this->Color = TURN_RED;
     } else if (!strcmp(data[0], "black")) {
-        this->Color = BLACK;
+        this->Color = TURN_BLACK;
     } else {
-        this->Color = 2;
+        this->Color = TURN_UNKNOWN;
     }
     // genmove
     char move[6];
-    this->generateMove(move);
+    myBoard.genMove(Color, move);
     sprintf(response, "%c%c %c%c", move[0], move[1], move[3], move[4]);
     return 0;
 }
@@ -121,7 +125,8 @@ bool BobAI::time_left(const char* data[], char* response) {
 }
 
 bool BobAI::showboard(const char* data[], char* response) {
-    Pirnf_Chessboard();
+    // Pirnf_Chessboard();
+    myBoard.printBoard();
     return 0;
 }
 
@@ -132,168 +137,7 @@ int GetFin(char c) {
     return -1;
 }
 
-void BobAI::initBoardState() {
-    /*
-
-	iPieceCount[14] (index):  [00] [01] [02] [03] [04] [05] [06] [07] [08] [09] [10] [11] [12] [13]
-	                           RK   RG   RM   RR   RN   RC   RP   BK   BG   BM   BR   BN   BC   BP 
-    	iCurrentPosition[32] (value):  [00] [01] [02] [03] [04] [05] [06] [07] [08] [09] [10] [11] [12] [13] [14] [15]  
-	                            	empty  RK   RR   RN   RN   RR   RC   RP  dark  BK   BG   BM   BR   BN   BC   BP 
-	*/
-    // initial board
-    char iCurrentPosition[32];
-    for (int i = 0; i < 32; i++) {
-        iCurrentPosition[i] = 'X';
-    }
-    int iPieceCount[14] = {1, 2, 2, 2, 2, 2, 5, 1, 2, 2, 2, 2, 2, 5};
-
-    puts("\niPieceCount[14]:");
-    for (int i = 0; i < 14; i++) printf("[%2d]", i);
-    puts("");
-    for (int i = 0; i < 14; i++) printf("%4d", iPieceCount[i]);
-    puts("\n");
-    puts("iCurrentPosition[32]:");
-    for (int i = 28; i >= 0; i -= 4) {
-        for (int j = 0; j < 4; j++)
-            printf("%2c ", iCurrentPosition[i + j]);
-        printf(" | ");
-        for (int j = 0; j < 4; j++)
-            printf("%2d ", i + j);
-        if (i % 4 == 0) puts("");
-    }
-    puts("");
-
-    printf("\n\n\n");
-
-    memcpy(this->CloseChess, iPieceCount, sizeof(int) * 14);
-
-    //convert to my format
-    int Index = 0;
-    for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 4; j++) {
-            this->Board[Index] = ConvertChessNo(GetFin(iCurrentPosition[Index]));
-            Index++;
-        }
-    }
-    this->Pirnf_Chessboard();
-}
-
-void BobAI::generateMove(char move[6]) {
-    /* generateMove Call by reference: change src,dst */
-
-    int Result[100];
-    int count = this->Expand(this->Board, this->Color, Result);
-    int startPoint = 0;
-    int EndPount = 0;
-
-    int CoverIndex[32];
-    int CoverCount = 0;
-    for (int i = 0; i < 32; i++)
-        if (this->Board[i] == CHESS_COVER) {
-            CoverIndex[CoverCount] = i;
-            CoverCount++;
-        }
-    int Answer;
-    if (CoverCount > 0) {
-        Result[count] = CoverIndex[rand() % CoverCount];
-        Result[count] = Result[count] * 100 + Result[count];
-        count++;
-    }
-
-    //randon choose legal move
-    if (count > 0) {
-        Answer = Result[rand() % count];
-        startPoint = Answer / 100;
-        EndPount = Answer % 100;
-        sprintf(move, "%c%c-%c%c", 'a' + (startPoint % 4), '1' + (7 - startPoint / 4), 'a' + (EndPount % 4), '1' + (7 - EndPount / 4));
-    }
-    //no legal move -> flip chess
-    else {
-        sprintf(move, "NAN");
-    }
-    char chess_Start[4] = "";
-    char chess_End[4] = "";
-    Pirnf_Chess(Board[startPoint], chess_Start);
-    Pirnf_Chess(Board[EndPount], chess_End);
-    printf("My result: \n--------------------------\n");
-    printf("(%d) -> (%d)\n", startPoint, EndPount);
-    printf("<%s> -> <%s>\n", chess_Start, chess_End);
-    printf("move:%s\n", move);
-    printf("--------------------------\n");
-    this->Pirnf_Chessboard();
-}
-
-void BobAI::MakeMove(const char move[6]) {
-    int src, dst;
-    src = ('8' - move[1]) * 4 + (move[0] - 'a');
-    if (move[2] == '(') {
-        printf("# call flip(): flip(%d,%d) = %d\n", src, src, GetFin(move[3]));
-        this->Board[src] = ConvertChessNo(GetFin(move[3]));
-        Pirnf_Chessboard();
-    } else {
-        dst = ('8' - move[4]) * 4 + (move[3] - 'a');
-        printf("# Search call move(): move : %d-%d \n", src, dst);
-        this->Board[dst] = this->Board[src];
-        this->Board[src] = CHESS_EMPTY;
-        Pirnf_Chessboard();
-    }
-    /* init time */
-}
-
 //---------------------------------------------my search function---------------------------------------------
-int BobAI::ConvertChessNo(int input) {
-    switch (input) {
-        case 0:
-            return CHESS_EMPTY;
-            break;
-        case 8:
-            return CHESS_COVER;
-            break;
-        case 1:
-            return 6;
-            break;
-        case 2:
-            return 5;
-            break;
-        case 3:
-            return 4;
-            break;
-        case 4:
-            return 3;
-            break;
-        case 5:
-            return 2;
-            break;
-        case 6:
-            return 1;
-            break;
-        case 7:
-            return 0;
-            break;
-        case 9:
-            return 13;
-            break;
-        case 10:
-            return 12;
-            break;
-        case 11:
-            return 11;
-            break;
-        case 12:
-            return 10;
-            break;
-        case 13:
-            return 9;
-            break;
-        case 14:
-            return 8;
-            break;
-        case 15:
-            return 7;
-            break;
-    }
-    return -1;
-}
 
 int BobAI::Expand(int* Board, int color, int* Result) {
     int ResultCount = 0;
@@ -330,100 +174,7 @@ int BobAI::Expand(int* Board, int color, int* Result) {
 }
 
 //---------------------------- Display --------------------------------
-//Display chess board
-void BobAI::Pirnf_Chessboard() {
-    char Mes[1024] = "";
-    char temp[1024];
-    char myColor[10] = "";
-    if (Color == -99)
-        strcpy(myColor, "Unknown");
-    else if (this->Color == RED)
-        strcpy(myColor, "Red");
-    else
-        strcpy(myColor, "Black");
-    sprintf(temp, "------------%s-------------\n", myColor);
-    strcat(Mes, temp);
-    strcat(Mes, "<8> ");
-    for (int i = 0; i < 32; i++) {
-        if (i != 0 && i % 4 == 0) {
-            sprintf(temp, "\n<%d> ", 8 - (i / 4));
-            strcat(Mes, temp);
-        }
-        char chess_name[4] = "";
-        Pirnf_Chess(this->Board[i], chess_name);
-        sprintf(temp, "%5s", chess_name);
-        strcat(Mes, temp);
-    }
-    strcat(Mes, "\n\n     ");
-    for (int i = 0; i < 4; i++) {
-        sprintf(temp, " <%c> ", 'a' + i);
-        strcat(Mes, temp);
-    }
-    strcat(Mes, "\n\n");
-    printf("%s", Mes);
-}
 
-//Print chess
-void BobAI::Pirnf_Chess(int chess_no, char* Result) {
-    // XX -> Empty
-    if (chess_no == CHESS_EMPTY) {
-        strcat(Result, " - ");
-        return;
-    }
-    //OO -> DarkChess
-    else if (chess_no == CHESS_COVER) {
-        strcat(Result, " X ");
-        return;
-    }
-    /*if(Color == RED )
-				strcat(Result, "R");
-		else
-				strcat(Result, "B");*/
-    switch (chess_no) {
-        case 0:
-            strcat(Result, " P ");
-            break;
-        case 1:
-            strcat(Result, " C ");
-            break;
-        case 2:
-            strcat(Result, " N ");
-            break;
-        case 3:
-            strcat(Result, " R ");
-            break;
-        case 4:
-            strcat(Result, " M ");
-            break;
-        case 5:
-            strcat(Result, " G ");
-            break;
-        case 6:
-            strcat(Result, " K ");
-            break;
-        case 7:
-            strcat(Result, " p ");
-            break;
-        case 8:
-            strcat(Result, " c ");
-            break;
-        case 9:
-            strcat(Result, " n ");
-            break;
-        case 10:
-            strcat(Result, " r ");
-            break;
-        case 11:
-            strcat(Result, " m ");
-            break;
-        case 12:
-            strcat(Result, " g ");
-            break;
-        case 13:
-            strcat(Result, " k ");
-            break;
-    }
-}
 
 // Referee
 bool BobAI::Referee(int* chess, int from_location_no, int to_location_no, int UserId) {

@@ -1,12 +1,26 @@
-CPLUSPLUS = g++ -std=c++11 -O2 -Wall
+CPLUSPLUS = g++ -std=c++11  -Wall
+LIB = BobAI.o Board.o CustomTypes.o IStrategy.o Piece.o Utility.o
+ALLFILES = src/main_agent.cpp src/main_helper.cpp src/Board.cpp src/BobAI.cpp src/CDCRule.cpp src/CustomTypes.cpp src/ISTrategy.cpp src/Piece.cpp src/Utility.cpp
 DEL = rm -f
 
-all: src/main_agent.cpp src/main_helper.cpp
+all: rule
 	mkdir -p target
-	$(CPLUSPLUS) src/main_agent.cpp -o target/agent
-	$(CPLUSPLUS) -D SERVER2 src/main_agent.cpp -o target/agent2
-	$(CPLUSPLUS) src/main_helper.cpp src/BobAI.cpp -o target/helper
-	$(CPLUSPLUS) -D SERVER2 src/main_helper.cpp src/BobAI.cpp -o target/helper2
+	$(CPLUSPLUS) src/*.cpp -c
+	$(CPLUSPLUS) main_agent.o -o target/agent
+	$(CPLUSPLUS) main_helper.o $(LIB) -o target/helper
+	$(DEL) *.o
+
+agent2: $(ALLFILES)
+	mkdir -p target
+	$(CPLUSPLUS) -D SERVER2 src/*.cpp -c
+	$(CPLUSPLUS) -D SERVER2 main_agent.o -o target/agent2
+	$(CPLUSPLUS) -D SERVER2 main_helper.o $(LIB) -o target/helper2
+	$(DEL) *.o
+
+rule: src/ruleCreator/ruleCreator.cpp
+	mkdir -p target
+	$(CPLUSPLUS) src/ruleCreator/ruleCreator.cpp -o target/ruleCreator
+	target/ruleCreator > src/CDCRule.hpp
 
 example: src/main.cpp src/MyAI.cpp
 	mkdir -p target
@@ -20,3 +34,5 @@ socket: src/socketExample/client.cpp src/socketExample/server.cpp
 	$(CPLUSPLUS) src/socketExample/server.cpp -o target/socketServer
 clean:
 	$(DEL) -r target
+	$(DEL) *.o
+	$(DEL) src/CDCRule.hpp;

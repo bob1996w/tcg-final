@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "Board.hpp"
 
 using namespace std;
 
@@ -56,12 +57,8 @@ class BobAI {
         "showboard"};
 
 public:
-    void generateMove(char move[6]);
-    void MakeMove(const char move[6]);
     BobAI(void);
     ~BobAI(void);
-    void initBoardState();
-    void Pirnf_Chessboard();
     // commands
     bool protocol_version(const char* data[], char* response);   // 0
     bool name(const char* data[], char* response);               // 1
@@ -82,11 +79,11 @@ public:
     bool time_left(const char* data[], char* response);          // 16
     bool showboard(const char* data[], char* response);          // 17
 private:
+    Board myBoard;
     int Color;
     int Red_Time, Black_Time;
-    int Board[32];
+    //int Board[32];
     int CloseChess[14];
-    int ConvertChessNo(int input);
     void Pirnf_Chess(int chess_no, char* Result);
     bool Referee(int* Board, int Startoint, int EndPoint, int color);
     int Expand(int* Board, int color, int* Result);
