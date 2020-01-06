@@ -86,17 +86,22 @@ bool BobAI::flip(const char* data[], char* response) {
 }
 
 bool BobAI::genmove(const char* data[], char* response) {
-    // set color
-    if (!strcmp(data[0], "red")) {
-        this->Color = TURN_RED;
-    } else if (!strcmp(data[0], "black")) {
-        this->Color = TURN_BLACK;
-    } else {
-        this->Color = TURN_UNKNOWN;
+    if (myBoard.turn == TURN_INITIAL || myBoard.turn == TURN_UNKNOWN) {
+        // haven't get move or genmove yet
+        // we won't be sure the board's current turn until first 
+        // genmove "color" (not unknown) arrives
+        if (!strcmp(data[0], "red")) {
+            myBoard.turn = TURN_RED;
+        } else if (!strcmp(data[0], "black")) {
+            myBoard.turn = TURN_BLACK;
+        } else {
+            myBoard.turn = TURN_UNKNOWN;
+        }
     }
+    printf("\n*--genmove with %s, %d--*\n", data[0], myBoard.turn);
     // genmove
     char move[6];
-    myBoard.genMove(Color, move);
+    myBoard.genMove(move);
     sprintf(response, "%c%c %c%c", move[0], move[1], move[3], move[4]);
     return 0;
 }

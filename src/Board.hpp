@@ -31,9 +31,10 @@ public:
     unsigned long long int hash;
 
     void initBoard();
-    void genMove(int turn, char move[6]);
+    void genMove(char move[6]);
     void applyMove(const char move[4]);
     void applyFlip(const char move[4]);
+    void afterApplyAction();
     // ========== utility ===========
     MoveList getAllMoveList(int turn);
     // ========== display ==========

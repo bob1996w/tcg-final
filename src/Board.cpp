@@ -21,7 +21,7 @@ void Board::initBoard() {
     }
 }
 
-void Board::genMove(int turn, char move[6]) {
+void Board::genMove(char move[6]) {
     printBoard();
     MoveList list = getAllMoveList(turn);
     printMoveList(list);
@@ -68,6 +68,7 @@ void Board::applyMove(const char move[5]) {
     // cannot directly swap two pieces! we can only swap the pointer to board.
     block[src] = dstPiece;
     block[dst] = srcPiece;
+    afterApplyAction();
 }
 
 void Board::applyFlip(const char move[4]) {
@@ -89,6 +90,13 @@ void Board::applyFlip(const char move[4]) {
     block[src] = piecePtr;
     piece[color][numPiece[color]] = piecePtr;
     ++numPiece[color];
+    afterApplyAction();
+}
+
+// update the turn.
+void Board::afterApplyAction() {
+    if (turn == TURN_RED) { turn = TURN_BLACK; }
+    else if (turn == TURN_BLACK) { turn = TURN_RED; }
 }
 
 // ============ utility ===========
