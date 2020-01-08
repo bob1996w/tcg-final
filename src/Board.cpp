@@ -19,16 +19,43 @@ void Board::initBoard() {
         piece[TURN_RED][i] = nullptr;
         piece[TURN_BLACK][i] = nullptr;
     }
+    hash = 0LL;
+    strategy = new SimpleStrategy();
+}
+
+void Board::copyBoard(Board that) {
+    for (int i = 0; i < 60; ++i) {
+        block[i] = nullptr;
+    }
+    turn = that.turn;
+    numPiece[TURN_RED] = that.numPiece[TURN_RED];
+    numPiece[TURN_BLACK] = that.numPiece[TURN_BLACK];
+    for (int i = 0; i < 16; ++i) {
+        allPiece[TURN_RED][i] = Piece(that.allPiece[TURN_RED][i]);
+        allPiece[TURN_BLACK][i] = Piece(that.allPiece[TURN_BLACK][i]);
+    }
+    for (int i = 1; i < 8; ++i) {
+        flippedNumPiece[TURN_RED][i] = 0;
+        flippedNumPiece[TURN_BLACK][i] = 0;
+    }
+    for (int i = 0; i < 16; ++i) {
+        piece[TURN_RED][i] = nullptr;
+        piece[TURN_BLACK][i] = nullptr;
+    }
+    hash = that.hash;
+    
+    // setup connections of Piece*
+    for (int t = 0; t < 2; ++t) {
+        for (int i = 0; i < 16; ++i) {
+            Piece p = allPiece[t][i];
+            block[p.pos] = &p;
+            piece[t][p.listPos] = &p;
+        }
+    }
 }
 
 void Board::genMove(char move[6]) {
-    printBoard();
-    MoveList list = getAllMoveList(turn);
-    printMoveList(list);
-    int idx = Utility::getRandomNum((int)list.size());
-    printf("genMove get idx %d in list size %d\n", idx, list.size());
-    fflush(stdout);
-    Move m = list.at(idx);
+    Move m = strategy->genMove(this);
     move[0] = m.first / 10 - 1 + 'a';
     move[1] = m.first % 10 + '0';
     move[2] = ' ';
@@ -52,6 +79,8 @@ void Board::applyMove(const char move[5]) {
         int swapListPos = dstPiece->listPos;
         dstPiece->pos = src;
         if (!dstPiece->isDead) {
+            // remove this piece
+            hash ^= ZOBRIST_KEY[dstPiece->pieceType][dst];
             dstPiece->isDead = true;
             dstPiece->listPos = -1;
             int color = (dstPiece->pieceType) >> 3;
@@ -64,6 +93,9 @@ void Board::applyMove(const char move[5]) {
         }
         
     }
+    hash ^= ZOBRIST_KEY[srcPiece->pieceType][src];
+    hash ^= ZOBRIST_KEY[srcPiece->pieceType][dst];
+
     srcPiece->pos = dst;
     // cannot directly swap two pieces! we can only swap the pointer to board.
     block[src] = dstPiece;
@@ -90,19 +122,22 @@ void Board::applyFlip(const char move[4]) {
     block[src] = piecePtr;
     piece[color][numPiece[color]] = piecePtr;
     ++numPiece[color];
+
+    hash ^= ZOBRIST_KEY[pType][src];
+
     afterApplyAction();
 }
 
 // update the turn.
 void Board::afterApplyAction() {
-    if (turn == TURN_RED) { turn = TURN_BLACK; }
-    else if (turn == TURN_BLACK) { turn = TURN_RED; }
+    if (turn == TURN_RED) { turn = TURN_BLACK; hash ^= ZOBRIST_TURN[TURN_RED] ^ ZOBRIST_TURN[TURN_BLACK]; }
+    else if (turn == TURN_BLACK) { turn = TURN_RED; hash ^= ZOBRIST_TURN[TURN_RED] ^ ZOBRIST_TURN[TURN_BLACK]; }
 }
 
 // ============ utility ===========
 
 // generate move list for the turn(color)
-MoveList Board::getAllMoveList(int turn) {
+MoveList Board::getAllMoveList() {
     MoveList list;
     if (turn == TURN_INITIAL) {
         // only flip

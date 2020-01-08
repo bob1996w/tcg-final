@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include "Board.hpp"
+#include "IStrategy.hpp"
 
 using namespace std;
 

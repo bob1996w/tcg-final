@@ -56,11 +56,13 @@ int main() {
     pid_t pid = fork();
     if (pid == 0) {
         // is child process
+        /*
 #ifdef SERVER2
         static char *argv[] = {"helper2", NULL};
 #else
         static char *argv[] = {"helper", NULL};
 #endif
+        */
 
 #ifdef SERVER2
         execlp("/Users/bobwang/Documents/MasterTwo/tcg/final/r07922018/target/helper2", nullptr);

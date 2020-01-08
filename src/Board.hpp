@@ -7,9 +7,12 @@
 #include <random>
 #include "Piece.hpp"
 #include "CustomTypes.hpp"
-#include "IStrategy.hpp"
 #include "CDCRule.hpp"
 #include "Utility.hpp"
+#include "HashConstant.hpp"
+
+#include "IStrategy.hpp"
+#include "SimpleStrategy.hpp"
 
 #define TURN_RED 0
 #define TURN_BLACK 1
@@ -29,14 +32,17 @@ public:
     int flippedNumPiece[2][8];      // how many pieces per type are already flipped for each color?
     Piece allPiece[2][16];
     unsigned long long int hash;
+    IStrategy* strategy;            // strategy for genMove
 
     void initBoard();
+    void copyBoard(Board that);
     void genMove(char move[6]);
     void applyMove(const char move[4]);
     void applyFlip(const char move[4]);
     void afterApplyAction();
+    void setStrategy(IStrategy* newStrategy);
     // ========== utility ===========
-    MoveList getAllMoveList(int turn);
+    MoveList getAllMoveList();
     // ========== display ==========
     void printBoard();
     void printBlock(char* message, int pos);

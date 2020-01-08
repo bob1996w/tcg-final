@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <random>
+#include <cmath>
 
 using namespace std;
 

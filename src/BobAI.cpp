@@ -92,8 +92,10 @@ bool BobAI::genmove(const char* data[], char* response) {
         // genmove "color" (not unknown) arrives
         if (!strcmp(data[0], "red")) {
             myBoard.turn = TURN_RED;
+            myBoard.hash ^= ZOBRIST_TURN[TURN_RED];
         } else if (!strcmp(data[0], "black")) {
             myBoard.turn = TURN_BLACK;
+            myBoard.hash ^= ZOBRIST_TURN[TURN_BLACK];
         } else {
             myBoard.turn = TURN_UNKNOWN;
         }

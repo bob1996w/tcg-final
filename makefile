@@ -1,6 +1,6 @@
 CPLUSPLUS = g++ -std=c++11  -Wall
-LIB = BobAI.o Board.o CustomTypes.o IStrategy.o Piece.o Utility.o
-ALLFILES = src/main_agent.cpp src/main_helper.cpp src/Board.cpp src/BobAI.cpp src/CDCRule.cpp src/CustomTypes.cpp src/ISTrategy.cpp src/Piece.cpp src/Utility.cpp
+LIB = BobAI.o Board.o CustomTypes.o IStrategy.o Piece.o Utility.o SimpleStrategy.o
+ALLFILES = src/main_agent.cpp src/main_helper.cpp src/Board.cpp src/BobAI.cpp src/CDCRule.cpp src/CustomTypes.cpp src/ISTrategy.cpp src/Piece.cpp src/Utility.cpp src/SimpleStrategy.cpp
 DEL = rm -f
 
 all: rule
@@ -22,6 +22,11 @@ rule: src/ruleCreator/ruleCreator.cpp
 	$(CPLUSPLUS) src/ruleCreator/ruleCreator.cpp -o target/ruleCreator
 	target/ruleCreator > src/CDCRule.hpp
 
+hash: src/hashCreator/hashCreator.cpp
+	mkdir -p target
+	$(CPLUSPLUS) src/hashCreator/hashCreator.cpp -o target/hashCreator
+	target/hashCreator > src/HashConstant.hpp
+
 example: src/main.cpp src/MyAI.cpp
 	mkdir -p target
 	$(CPLUSPLUS) src/main.cpp src/MyAI.cpp -o target/client
@@ -36,3 +41,4 @@ clean:
 	$(DEL) -r target
 	$(DEL) *.o
 	$(DEL) src/CDCRule.hpp;
+	$(DEL) src/HashConstant.hpp
