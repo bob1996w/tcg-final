@@ -14,11 +14,11 @@ int main() {
 
     cout << endl;
     cout << "// zobrist key" << endl;
-    cout << "static long long int ZOBRIST_TURN [2] = {" << dist(e2) << "LL, " << dist(e2) << "LL};" << endl;
+    cout << "static unsigned long long int ZOBRIST_TURN [2] = {" << dist(e2) << "LL, " << dist(e2) << "LL};" << endl;
     cout << endl;
     
     // zobrist function for each [piece][position]
-    cout << "static long long int ZOBRIST_KEY [16][60] = {" << endl;
+    cout << "static unsigned long long int ZOBRIST_KEY [16][60] = {" << endl;
     for (int piece = 0; piece < 16; ++piece) {
         cout << "{";
         for (int i = 0; i < 6; ++i) {

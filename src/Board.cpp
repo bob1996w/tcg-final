@@ -20,49 +20,48 @@ void Board::initBoard() {
         piece[TURN_BLACK][i] = nullptr;
     }
     hash = 0LL;
-    strategy = new SimpleStrategy();
 }
 
-void Board::copyBoard(Board that) {
+void Board::copyBoard(Board& that) {
     for (int i = 0; i < 60; ++i) {
         block[i] = nullptr;
     }
-    turn = that.turn;
+    this->turn = that.turn;
+    printf("this.turn: %d, that.turn: %d\n", turn, that.turn);
+    fflush(stdout);
+    
     numPiece[TURN_RED] = that.numPiece[TURN_RED];
     numPiece[TURN_BLACK] = that.numPiece[TURN_BLACK];
     for (int i = 0; i < 16; ++i) {
         allPiece[TURN_RED][i] = Piece(that.allPiece[TURN_RED][i]);
+        printf("copy allPiece %d to %d\n", allPiece[TURN_RED][i].pos, that.allPiece[TURN_RED][i].pos);
         allPiece[TURN_BLACK][i] = Piece(that.allPiece[TURN_BLACK][i]);
     }
     for (int i = 1; i < 8; ++i) {
         flippedNumPiece[TURN_RED][i] = 0;
         flippedNumPiece[TURN_BLACK][i] = 0;
     }
+    
     for (int i = 0; i < 16; ++i) {
         piece[TURN_RED][i] = nullptr;
         piece[TURN_BLACK][i] = nullptr;
     }
     hash = that.hash;
-    
+
     // setup connections of Piece*
     for (int t = 0; t < 2; ++t) {
         for (int i = 0; i < 16; ++i) {
-            Piece p = allPiece[t][i];
-            block[p.pos] = &p;
-            piece[t][p.listPos] = &p;
+            Piece* p = &(allPiece[t][i]);
+            if (p->pos >= 0) {
+                block[p->pos] = p;
+            }
+            if (p->listPos >= 0) {
+                piece[t][p->listPos] = p;
+            }
         }
     }
-}
-
-void Board::genMove(char move[6]) {
-    Move m = strategy->genMove(this);
-    move[0] = m.first / 10 - 1 + 'a';
-    move[1] = m.first % 10 + '0';
-    move[2] = ' ';
-    move[3] = m.second / 10 - 1 + 'a';
-    move[4] = m.second % 10 + '0';
-    move[5] = '\0';
-    printf("genMove: %s\n", move);
+    
+    printf("%d\n", this->turn);
 }
 
 void Board::applyMove(const char move[5]) {
@@ -139,7 +138,7 @@ void Board::afterApplyAction() {
 // generate move list for the turn(color)
 MoveList Board::getAllMoveList() {
     MoveList list;
-    if (turn == TURN_INITIAL) {
+    if (turn == TURN_UNKNOWN) {
         // only flip
         for (int i = 0; i < 60; ++i) {
             if (!IS_OUT[i]) {
@@ -154,7 +153,7 @@ MoveList Board::getAllMoveList() {
                 list.emplace_back(i, i);
             }
         }
-        fprintf(stderr, "scanned flip");
+        fprintf(stderr, "scanned flip\n");
         fflush(stderr);
         // move
         for (int pidx = 0; pidx < numPiece[turn]; ++pidx) {
@@ -197,7 +196,7 @@ MoveList Board::getAllMoveList() {
                 }
             }
         }
-        fprintf(stderr, "scanned move");
+        fprintf(stderr, "scanned move\n");
         fflush(stderr);
     }
     return list;

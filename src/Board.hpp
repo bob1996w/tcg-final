@@ -11,9 +11,6 @@
 #include "Utility.hpp"
 #include "HashConstant.hpp"
 
-#include "IStrategy.hpp"
-#include "SimpleStrategy.hpp"
-
 #define TURN_RED 0
 #define TURN_BLACK 1
 #define TURN_UNKNOWN 2 
@@ -31,16 +28,13 @@ public:
     int numPiece[2];                // how many pieces are avaliable for each color? region for piece[color]
     int flippedNumPiece[2][8];      // how many pieces per type are already flipped for each color?
     Piece allPiece[2][16];
-    unsigned long long int hash;
-    IStrategy* strategy;            // strategy for genMove
+    Hash hash;
 
     void initBoard();
-    void copyBoard(Board that);
-    void genMove(char move[6]);
+    void copyBoard(Board& that);
     void applyMove(const char move[4]);
     void applyFlip(const char move[4]);
     void afterApplyAction();
-    void setStrategy(IStrategy* newStrategy);
     // ========== utility ===========
     MoveList getAllMoveList();
     // ========== display ==========

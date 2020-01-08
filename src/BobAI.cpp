@@ -57,7 +57,6 @@ bool BobAI::reset_board(const char* data[], char* response) {
     // this->Black_Time = -1;  // known
     // this->initBoardState();
     myBoard.initBoard();
-    myBoard.printBoard();
     return 0;
 }
 
@@ -100,10 +99,12 @@ bool BobAI::genmove(const char* data[], char* response) {
             myBoard.turn = TURN_UNKNOWN;
         }
     }
-    printf("\n*--genmove with %s, %d--*\n", data[0], myBoard.turn);
-    // genmove
+    if (root != nullptr) {
+        delete root;
+    }
     char move[6];
-    myBoard.genMove(move);
+    root = new TreeNode(myBoard, Move(-1, -1));
+    root->genMove(move);
     sprintf(response, "%c%c %c%c", move[0], move[1], move[3], move[4]);
     return 0;
 }

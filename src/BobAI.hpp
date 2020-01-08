@@ -5,6 +5,8 @@
 #include <string.h>
 #include <time.h>
 #include "Board.hpp"
+#include "TreeNode.hpp"
+
 #include "IStrategy.hpp"
 
 using namespace std;
@@ -81,10 +83,11 @@ public:
     bool showboard(const char* data[], char* response);          // 17
 private:
     Board myBoard;
+    TreeNode* root;
     int Color;
     int Red_Time, Black_Time;
     //int Board[32];
-    int CloseChess[14];
+    //int CloseChess[14];
     void Pirnf_Chess(int chess_no, char* Result);
     bool Referee(int* Board, int Startoint, int EndPoint, int color);
     int Expand(int* Board, int color, int* Result);
