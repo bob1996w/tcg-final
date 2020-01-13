@@ -1,6 +1,10 @@
 #include "BobAI.hpp"
 
-BobAI::BobAI(void) { this->Color = 2; }
+BobAI::BobAI(void) { 
+    this->Color = 2;
+    transpositionTable = new HashMap();
+    transpositionTable->initialize();
+}
 
 BobAI::~BobAI(void) {}
 
@@ -85,6 +89,8 @@ bool BobAI::flip(const char* data[], char* response) {
 }
 
 bool BobAI::genmove(const char* data[], char* response) {
+    fprintf(stdout, "BobAI::genmove!\n");
+    fflush(stdout);
     if (myBoard.turn == TURN_INITIAL || myBoard.turn == TURN_UNKNOWN) {
         // haven't get move or genmove yet
         // we won't be sure the board's current turn until first 
@@ -100,11 +106,20 @@ bool BobAI::genmove(const char* data[], char* response) {
         }
     }
     if (root != nullptr) {
+        fprintf(stdout, "attempt to delete root\n");fflush(stdout);fflush(stderr);
         delete root;
+        fprintf(stdout, "successful delete root\n");fflush(stdout);fflush(stderr);
     }
     char move[6];
-    root = new TreeNode(myBoard, Move(-1, -1));
-    root->genMove(move);
+    root = new TreeNode(nullptr, myBoard, transpositionTable);
+#ifdef DEBUG
+    root -> dewey_part = "root";
+#endif
+    int timeLimit = Red_Time;
+    if (root->board.turn == TURN_BLACK) {
+        timeLimit = Black_Time;
+    }
+    root->genMove(move, timeLimit);
     sprintf(response, "%c%c %c%c", move[0], move[1], move[3], move[4]);
     return 0;
 }

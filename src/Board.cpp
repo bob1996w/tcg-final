@@ -14,32 +14,37 @@ void Board::initBoard() {
         }
         flippedNumPiece[TURN_RED][i] = 0;
         flippedNumPiece[TURN_BLACK][i] = 0;
+        useableNumPiece[TURN_RED][i] = 0;
+        useableNumPiece[TURN_BLACK][i] = 0;
     }
     for (int i = 0; i < 16; i++) {
         piece[TURN_RED][i] = nullptr;
         piece[TURN_BLACK][i] = nullptr;
     }
     hash = 0LL;
+    depth = 0;
+    numPieceUnflipped[TURN_RED] = 16;
+    numPieceUnflipped[TURN_BLACK] = 16;
 }
 
 void Board::copyBoard(Board& that) {
     for (int i = 0; i < 60; ++i) {
         block[i] = nullptr;
     }
-    this->turn = that.turn;
-    printf("this.turn: %d, that.turn: %d\n", turn, that.turn);
-    fflush(stdout);
+    turn = that.turn;
     
     numPiece[TURN_RED] = that.numPiece[TURN_RED];
     numPiece[TURN_BLACK] = that.numPiece[TURN_BLACK];
     for (int i = 0; i < 16; ++i) {
         allPiece[TURN_RED][i] = Piece(that.allPiece[TURN_RED][i]);
-        printf("copy allPiece %d to %d\n", allPiece[TURN_RED][i].pos, that.allPiece[TURN_RED][i].pos);
+        //printf("copy allPiece %d to %d\n", allPiece[TURN_RED][i].pos, that.allPiece[TURN_RED][i].pos);
         allPiece[TURN_BLACK][i] = Piece(that.allPiece[TURN_BLACK][i]);
     }
     for (int i = 1; i < 8; ++i) {
-        flippedNumPiece[TURN_RED][i] = 0;
-        flippedNumPiece[TURN_BLACK][i] = 0;
+        flippedNumPiece[TURN_RED][i] = that.flippedNumPiece[TURN_RED][i];
+        flippedNumPiece[TURN_BLACK][i] = that.flippedNumPiece[TURN_BLACK][i];
+        useableNumPiece[TURN_RED][i] = that.useableNumPiece[TURN_RED][i];
+        useableNumPiece[TURN_BLACK][i] = that.useableNumPiece[TURN_BLACK][i];
     }
     
     for (int i = 0; i < 16; ++i) {
@@ -47,6 +52,9 @@ void Board::copyBoard(Board& that) {
         piece[TURN_BLACK][i] = nullptr;
     }
     hash = that.hash;
+    depth = that.depth;
+    numPieceUnflipped[TURN_RED] = that.numPieceUnflipped[TURN_RED];
+    numPieceUnflipped[TURN_BLACK] = that.numPieceUnflipped[TURN_BLACK];
 
     // setup connections of Piece*
     for (int t = 0; t < 2; ++t) {
@@ -60,18 +68,19 @@ void Board::copyBoard(Board& that) {
             }
         }
     }
-    
-    printf("%d\n", this->turn);
 }
 
 void Board::applyMove(const char move[5]) {
-    printBoard();
     // first two chars are source coord, last two chars are destination coord.
-    int src, dst;
-    src = (move[0] - 'a' + 1) * 10 + (move[1] - '0');
-    dst = (move[2] - 'a' + 1) * 10 + (move[3] - '0');
-    printf("move: %d-%d\n", src, dst);
-    fflush(stdout);
+    Move m((move[0] - 'a' + 1) * 10 + (move[1] - '0'), (move[2] - 'a' + 1) * 10 + (move[3] - '0'));
+    applyMove(m);
+}
+
+void Board::applyMove(Move move) {
+    //printBoard();
+    int src = move.first, dst = move.second;
+    //printf("move: %d-%d\n", src, dst);
+    //fflush(stdout);
     Piece *srcPiece = block[src], *dstPiece = block[dst];
     if (dstPiece != nullptr) {
         // eat or to eaten space
@@ -84,6 +93,7 @@ void Board::applyMove(const char move[5]) {
             dstPiece->listPos = -1;
             int color = (dstPiece->pieceType) >> 3;
             --numPiece[color];
+            --useableNumPiece[color][dstPiece->pieceType & 7];
             if (swapListPos != numPiece[color]) {
                 // move the last one on piece to current position
                 piece[color][numPiece[color]]->listPos = swapListPos;
@@ -103,18 +113,25 @@ void Board::applyMove(const char move[5]) {
 }
 
 void Board::applyFlip(const char move[4]) {
+    int src = (move[0] - 'a' + 1) * 10 + (move[1] - '0');
+    applyFlip(Flip(src, move[2]));
+}
+
+void Board::applyFlip(Flip flipMove) {
     // first two chars are coordinate, the third is the pieceType.
-    int src;
-    src = (move[0] - 'a' + 1) * 10 + (move[1] - '0');
-    printf("flip: %d, %c\n", src, move[2]);
-    fflush(stdout);
-    int pType = Char2Piece(move[2]);
+    int src = flipMove.first;
+    int pChar = flipMove.second;
+    //printf("flip: %d, %c\n", src, pChar);
+    //fflush(stdout);
+    int pType = Char2Piece(pChar);
     int color = pType >> 3;
     int type = pType & 7;
-    printf("type %d, color %d\n", type, color);
-    fflush(stdout);
+    //printf("type %d, color %d\n", type, color);
+    //fflush(stdout);
     Piece* piecePtr = &(allPiece[color][allPieceTypePos[type] + flippedNumPiece[color][type]]);
     ++flippedNumPiece[color][type];
+    ++useableNumPiece[color][type];
+    --numPieceUnflipped[color];
     
     piecePtr->pos = src;
     piecePtr->listPos = numPiece[color];
@@ -129,8 +146,10 @@ void Board::applyFlip(const char move[4]) {
 
 // update the turn.
 void Board::afterApplyAction() {
+    depth += 1;
     if (turn == TURN_RED) { turn = TURN_BLACK; hash ^= ZOBRIST_TURN[TURN_RED] ^ ZOBRIST_TURN[TURN_BLACK]; }
     else if (turn == TURN_BLACK) { turn = TURN_RED; hash ^= ZOBRIST_TURN[TURN_RED] ^ ZOBRIST_TURN[TURN_BLACK]; }
+    checkAndUpdateWinner();
 }
 
 // ============ utility ===========
@@ -202,6 +221,12 @@ MoveList Board::getAllMoveList() {
     return list;
 }
 
+bool Board::checkAndUpdateWinner() {
+    // TODO: implement winner checkint and update Board::winner
+    if (numPieceUnflipped[TURN_RED] == 0 && numPiece[TURN_RED] == 0) { winner = TURN_BLACK; }
+    if (numPieceUnflipped[TURN_BLACK] == 0 && numPiece[TURN_BLACK] == 0) { winner= TURN_RED; }
+}
+
 // ============ display ==========
 void Board::printBoard() {
     printAllPiece();
@@ -265,6 +290,11 @@ void Board::printAllPiece() {
         sprintf(temp, "%d ", flippedNumPiece[TURN_RED][i]);
         strcat(mes, temp);
     }
+    strcat(mes, "useableNumPiece :");
+    for (int i = 0; i < 8; ++i) {
+        sprintf(temp, "%d ", useableNumPiece[TURN_RED][i]);
+        strcat(mes, temp);
+    }
     strcat(mes, "\n");
     strcat(mes, "===black===\n");
     for (int i = 0; i < 16; ++i) {
@@ -279,6 +309,11 @@ void Board::printAllPiece() {
         sprintf(temp, "%d ", flippedNumPiece[TURN_BLACK][i]);
         strcat(mes, temp);
     }
+    strcat(mes, "useableNumPiece :");
+    for (int i = 0; i < 8; ++i) {
+        sprintf(temp, "%d ", useableNumPiece[TURN_BLACK][i]);
+        strcat(mes, temp);
+    }
     strcat(mes, "\n");
     printf("%s\n\n",mes);
 }
@@ -287,16 +322,21 @@ void Board::printMoveList(MoveList list) {
     printf("____MOVE LIST____\n");
     for (int i = 0; i < list.size(); ++i) {
         Move m = list.at(i);
-        if (m.first == m.second) {
-            printf("  flip %d\n", m.first);
-        }
-        else {
-            if (block[m.second] == nullptr) {
-                printf("  move %d %c -> %d X\n", m.first, PIECE2CHAR[block[m.first]->pieceType], m.second);
-            }
-            printf("  move %d %c -> %d %c\n", m.first, PIECE2CHAR[block[m.first]->pieceType], m.second, PIECE2CHAR[block[m.second]->pieceType]);
-        }
+        printMove(m);
+        printf("\n");
     }
-    printf("total %d possible moves\n", list.size());
+    printf("total %d possible moves\n", (int)list.size());
     printf("____END  LIST____\n\n");
+}
+
+void Board::printMove(Move m) {
+    if (m.first == m.second) {
+        printf("  flip %d", m.first);
+    }
+    else {
+        if (block[m.second] == nullptr) {
+            printf("  move %d %c -> %d X", m.first, PIECE2CHAR[block[m.first]->pieceType], m.second);
+        }
+        printf("  move %d %c -> %d %c", m.first, PIECE2CHAR[block[m.first]->pieceType], m.second, PIECE2CHAR[block[m.second]->pieceType]);
+    }
 }

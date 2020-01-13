@@ -6,6 +6,7 @@
 #include <time.h>
 #include "Board.hpp"
 #include "TreeNode.hpp"
+#include "HashMap.hpp"
 
 #include "IStrategy.hpp"
 
@@ -84,6 +85,7 @@ public:
 private:
     Board myBoard;
     TreeNode* root;
+    HashMap* transpositionTable;
     int Color;
     int Red_Time, Black_Time;
     //int Board[32];

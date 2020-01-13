@@ -11,9 +11,9 @@
 class HashMapNode {
 public:
     Hash hash;
-    int searchDepth;
-    int score;
-    int turn;
+    int searchDepth = 0;
+    int score = 0;
+    bool isExactValue = false;
     HashMapNode* next = nullptr;
 };
 
@@ -24,7 +24,7 @@ public:
     HashMapNode** list;
 
     void initialize();
-    bool insert(Hash fullHash, int searchDepth, int score, Move bestMove);
+    bool insert(Hash fullHash, int nSearchDepth, int nScore, bool nIsExactValue);
     HashMapNode* get(Hash fullHash);
     void cleanUp();
 private:

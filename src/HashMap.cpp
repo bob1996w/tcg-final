@@ -9,17 +9,24 @@ void HashMap::initialize() {
 }
 
 // convert from full hash to reduced hash (key for hashmap.)
-int getKey(Hash fullHash) {
+int HashMap::getKey(Hash fullHash) {
     return fullHash & REDUCED_HASH_MASK;
 }
 
-bool HashMap::insert(Hash fullHash, int nSearchDepth, int nScore, Move nBestMove) {
+// true: new node, false: exist node.
+bool HashMap::insert(Hash fullHash, int nSearchDepth, int nScore, bool nIsExactValue) {
     int key = getKey(fullHash);
     HashMapNode* currentList = list[key];
     HashMapNode* node = currentList;
     while (node) {
         if ((node->hash ^ fullHash) == 0) {
-            // board exist, compare depth and such
+            if (nSearchDepth >= node->searchDepth) {
+                // new depth deeper or equal to old depth, so update
+                node->searchDepth = nSearchDepth;
+                node->score = nScore;
+                node->isExactValue = nIsExactValue;
+            }
+            return false;
         }
         node = node -> next;
     }
@@ -43,6 +50,7 @@ HashMapNode* HashMap::get(Hash fullHash) {
         if ((node->hash ^ fullHash) == 0) {
             return node;
         }
+        node = node->next;
     }
     return nullptr;
 }

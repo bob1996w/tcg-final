@@ -5,6 +5,41 @@
 #define UP -10
 #define DOWN 10
 
+// pieceType constants
+
+ // 紅帥
+#define PT_RK  1
+ // 紅仕
+#define PT_RG  2
+ // 紅相
+#define PT_RM  3
+ // 紅俥
+#define PT_RR  4
+ // 紅馬
+#define PT_RN  5
+ // 紅炮
+#define PT_RC  6
+ // 紅兵
+#define PT_RP  7
+ // 黑將
+#define PT_BK  9
+ // 黑士
+#define PT_BG 10
+ // 黑象
+#define PT_BM 11
+ // 黑車
+#define PT_BR 12
+ // 黑馬
+#define PT_BN 13
+ // 黑包
+#define PT_BC 14
+ // 黑卒
+#define PT_BP 15
+
+// all piece type array
+static int ALL_PIECE_TYPE[14] = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15};
+
+
 static bool CAN_EAT_BY_MOVE [16][16] = {
 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,},
 {0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,},
