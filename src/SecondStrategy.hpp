@@ -44,7 +44,7 @@ private:
         /* 4 */ 11, 18, 41, 48
     };
     // generate one best position to flip
-    Move getMoveListFlip(Board* board);
+    Move getMoveListFlip(Board* board, int turn);
     // move list that only contains eat
     MoveList getMoveListEat(Board* board, int turn);
     // move list that only contains move

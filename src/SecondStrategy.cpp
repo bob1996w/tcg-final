@@ -117,14 +117,14 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
         fprintf(stdout, "genMove::generated %d childs\n", moves.size()); fflush(stdout);
         if (moves.size() == 0) {
             fprintf(stdout, "return genMoveListFlip\n"); fflush(stdout);
-            return getMoveListFlip(&node->board);
+            return getMoveListFlip(&node->board, rootColor);
         }
         node->generateChilds(moves);
     }
 
     // temporary time limit
     int timeLimitMs = (node->board.depth < 10)? 1000 : 
-            (node->board.depth < 80 && leftTimeMs >= 300000) ? (leftTimeMs - 20000) / (120 - node->board.depth) :
+            (node->board.depth < 80 && leftTimeMs >= 300000) ? (leftTimeMs - 60000) / (120 - node->board.depth) :
             (leftTimeMs - 20000) / 40;
     int perChildTimeLimitMs = timeLimitMs / node->numChild;
     fprintf(stdout, "genMove::depth %d, time: T = %d, t = %d, c = %d ms\n", node->board.depth, leftTimeMs, timeLimitMs, perChildTimeLimitMs);
@@ -150,7 +150,7 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
     // TODO: fix the scoring to use the flip
     if (bestScore < 0 && node->board.numPieceUnflipped[rootColor] > 0) {
         fprintf(stdout, "genMove::use flip, numPieceUnflipped = red[%d], black[%d]\n", node->board.numPieceUnflipped[TURN_RED], node->board.numPieceUnflipped[TURN_BLACK]);
-        return getMoveListFlip(&node->board);
+        return getMoveListFlip(&node->board, rootColor);
     }
     else {
         return node->child[bestChild]->move;
@@ -349,23 +349,81 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
     }
 }
 
-Move SecondStrategy::getMoveListFlip(Board* board) {
+Move SecondStrategy::getMoveListFlip(Board* board, int turn) {
     if (board->numPieceUnflipped[board->turn] == 0) {
         // no more piece to flip!
         return Move(-1, -1);
     }
     // TODO: generate MoveList containing only one flip move that is the best
-    int bestPos = -1, pos = 0;
-    int bestPosScore = 0, posScore = 0;
+    int bestPos = -1, src = 0;
+    int bestPosScore = INT_MIN, posScore = 0;
+    int thisTypePieceNum = 0, color, type, turn_multiplier;
     for (int fidx = 0; fidx < 32; ++fidx) {
-        pos = flipSequence[fidx];
-        if (board->block[pos] == nullptr) {
-            // is a dark piece
-            bestPos = pos;
-            break;
+        src = flipSequence[fidx];
+        if (board->block[src] == nullptr) {
+            posScore = 0;
+            // test if any surrounded ply Y can eat the ply I flipped X on this POS or vice versa.
+            // if Y can eat X, we minus plyBasicScore[X] * nonFlipped[X] * turn_multiplier to POS_SCORE.
+            // if X is ours, turn_multiplier is 1. If it is enemy's, turn_multiplier is -1.
+            for (int pType = 1; pType < 16; ++pType) {
+                if ((pType & 7) == 0) { continue; }
+                color = pType >> 3;
+                type = pType & 7;
+                turn_multiplier = (color == turn)? 1 : -1;
+                if ((thisTypePieceNum = allPieceTypeNum[type] - board->useableNumPiece[color][type])) {
+                    // there are still PTYPE piece being dark.
+                    
+                    // by move
+                    for (int didx = 0; didx < MOVE_NUM[src]; ++didx) {
+                        int dst = src + MOVE_DIR[src][didx];
+                        if (board->block[dst]!=nullptr && !(board->block[dst]->isDead)) {
+                            // if dst->pieceType can eat this type
+                            if (CAN_EAT_BY_MOVE[board->block[dst]->pieceType][pType]) {
+                                posScore -= plyBasicScore[pType] * thisTypePieceNum * turn_multiplier;
+                            }
+                            // if this type can eat dst->pieceType
+                            if (CAN_EAT_BY_MOVE[pType][board->block[dst]->pieceType]) {
+                                posScore += plyBasicScore[board->block[dst]->pieceType] * thisTypePieceNum * turn_multiplier;
+                            }
+                        }
+                    }
+
+                    // by jump
+                    for (int jidx = 0; jidx < JUMP_NUM[src]; ++jidx) {
+                        bool existJumpedPiece = false;
+                        for (int dst = src + JUMP_DIR[src][jidx]; !IS_OUT[dst]; dst += JUMP_DIR[src][jidx]) {
+                            if (board->block[dst] == nullptr || !board->block[dst]->isDead) {
+                                if (!existJumpedPiece) { existJumpedPiece = true; }
+                                else if (board->block[dst] != nullptr) {
+                                    // if dst->pieceType can jump-eat this type
+                                    if (CAN_EAT_BY_JUMP[board->block[dst]->pieceType][pType]) {
+                                        posScore -= plyBasicScore[pType] * thisTypePieceNum * turn_multiplier;
+                                    }
+                                    // if this can jump-eat dst->pieceType
+                                    if (CAN_EAT_BY_JUMP[pType][board->block[dst]->pieceType]) {
+                                        posScore += plyBasicScore[board->block[dst]->pieceType] * thisTypePieceNum * turn_multiplier;
+                                    }
+                                    break;
+                                }
+                                else {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            fprintf(stdout, "getMoveListFlip::pos %d -> score %d\n", src, posScore);
+
+            if (posScore > bestPosScore) {
+                bestPosScore = posScore;
+                bestPos = src;
+            }
         }
     }
-    return Move(pos, pos);
+    fprintf(stdout, "getMoveListFlip::bestPos %d -> score %d\n", bestPos, posScore);
+    return Move(bestPos, bestPos);
 }
 
 MoveList SecondStrategy::getMoveListEat(Board* board, int turn) {
