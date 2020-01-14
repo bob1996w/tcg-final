@@ -19,7 +19,7 @@ bool HashMap::insert(Hash fullHash, int nSearchDepth, int nScore, bool nIsExactV
     HashMapNode* currentList = list[key];
     HashMapNode* node = currentList;
     while (node) {
-        if ((node->hash ^ fullHash) == 0) {
+        if (node->hash == fullHash) {
             if (nSearchDepth >= node->searchDepth) {
                 // new depth deeper or equal to old depth, so update
                 node->searchDepth = nSearchDepth;
@@ -47,7 +47,7 @@ HashMapNode* HashMap::get(Hash fullHash) {
     HashMapNode* currentList = list[key];
     HashMapNode* node = currentList;
     while (node) {
-        if ((node->hash ^ fullHash) == 0) {
+        if (node->hash == fullHash) {
             return node;
         }
         node = node->next;

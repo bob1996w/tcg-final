@@ -3,14 +3,21 @@ LIB = BobAI.o Board.o CustomTypes.o IStrategy.o Piece.o Utility.o SimpleStrategy
 ALLFILES = src/main_agent.cpp src/main_helper.cpp src/Board.cpp src/BobAI.cpp src/CDCRule.cpp src/CustomTypes.cpp src/ISTrategy.cpp src/Piece.cpp src/Utility.cpp src/SimpleStrategy.cpp src/TreeNode.cpp src/EarlyGameStrategy.cpp src/SecondStrategy.cpp src/HashMap.cpp
 DEL = rm -f
 
-all: rule
+all: hash rule
 	mkdir -p target
 	$(CPLUSPLUS) -D DEBUG src/*.cpp -c
 	$(CPLUSPLUS) main_agent.o -o target/agent
 	$(CPLUSPLUS)  main_helper.o $(LIB) -o target/helper
 	$(DEL) *.o
 
-agent2: $(ALLFILES)
+noDebug: hash rule
+	mkdir -p target
+	$(CPLUSPLUS) src/*.cpp -c
+	$(CPLUSPLUS) main_agent.o -o target/agent
+	$(CPLUSPLUS)  main_helper.o $(LIB) -o target/helper
+	$(DEL) *.o
+
+agent2: hash rule
 	mkdir -p target
 	$(CPLUSPLUS) -D SERVER2 src/*.cpp -c
 	$(CPLUSPLUS) -D SERVER2 main_agent.o -o target/agent2
@@ -41,4 +48,3 @@ clean:
 	$(DEL) -r target
 	$(DEL) *.o
 	$(DEL) src/CDCRule.hpp;
-	$(DEL) src/HashConstant.hpp

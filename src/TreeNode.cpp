@@ -16,7 +16,7 @@ TreeNode::TreeNode(TreeNode* p, Board& b, Move m) {
         hasBeenInChanceNode = true;
     }
     board.copyBoard(b);
-    strategy = new EarlyGameStrategy();
+    strategy = nullptr;
     // TODO: revive chance node?
     // NOTE: the chance node is on halt. Too complicated.
     if (m.first == m.second) {
@@ -55,7 +55,7 @@ TreeNode::TreeNode(TreeNode* p, Board& b, Flip f) {
         hasBeenInChanceNode = true;
     }
     board.copyBoard(b);
-    strategy = new EarlyGameStrategy();
+    strategy = nullptr;
     flippedPiece = f.second;
     board.applyFlip(f);
 }

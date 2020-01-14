@@ -124,7 +124,7 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
 
     // temporary time limit
     int timeLimitMs = (node->board.depth < 10)? 1000 : 
-            (node->board.depth < 80 && leftTimeMs >= 300000) ? (leftTimeMs - 60000) / (120 - node->board.depth) :
+            (node->board.depth < 80 && leftTimeMs >= 300000) ? (leftTimeMs - 300000) / (120 - node->board.depth) :
             (leftTimeMs - 20000) / 40;
     int perChildTimeLimitMs = timeLimitMs / node->numChild;
     fprintf(stdout, "genMove::depth %d, time: T = %d, t = %d, c = %d ms\n", node->board.depth, leftTimeMs, timeLimitMs, perChildTimeLimitMs);
@@ -135,7 +135,7 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
     for (int i = 0; i < node->numChild; ++i) {
         int score = iterativeDeepening(node->child[i], perChildTimeLimitMs);
         fprintf(stdout, "genMove::ID %d / %d", i + 1, node->numChild);
-        node->child[i]->board.printMove(node->child[i]->move);
+        node->board.printMove(node->child[i]->move);
         fprintf(stdout, ", %d\n", score);
         fflush(stdout);
         if (score > bestScore) {
@@ -232,9 +232,9 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
 
     // check timeout
     int currentTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    int elapsedTimeMs = currentTimeMs - startTimeMs;
+    // int elapsedTimeMs = currentTimeMs - startTimeMs;
     
-    if (elapsedTimeMs - startTimeMs >= timeLimitMs) {
+    if (currentTimeMs - startTimeMs >= timeLimitMs) {
         fprintf(stdout, "search::searchExceedTimeLimit\n");fflush(stdout);
         searchExceedTimeLimit = true;
     }
@@ -274,9 +274,9 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
         //fflush(stdout);
 #endif
         // max node, algorithm F4'
-        int m = INT_MIN, t; // m is current best lower bound, fail soft
+        int m = INT_MIN, t; // m is current best lower bound; fail soft
         if (tableResult != nullptr) { m = tableResult->score; }
-        m = MAX(m, search(node->child[0], alpha, beta, depth - 1, startTimeMs, timeLimitMs)); // test first branch, enter G4'
+        m = std::max(m, search(node->child[0], alpha, beta, depth - 1, startTimeMs, timeLimitMs)); // test first branch, enter G4'
         if (m >= beta) {
             // beta cut-off
             transpositionTable->insert(node->board.hash, depth, m, false);
@@ -315,7 +315,8 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
 #endif
         // min node, algorithm G4'
         int m = INT_MAX, t; // m is current best upper bound, fail soft
-        m = MIN(m, search(node->child[0], alpha, beta, depth - 1, startTimeMs, timeLimitMs));
+        if (tableResult != nullptr) { m = tableResult->score; }
+        m = std::min(m, search(node->child[0], alpha, beta, depth - 1, startTimeMs, timeLimitMs));
         if (m <= alpha) {
             // alpha cut-off
             transpositionTable->insert(node->board.hash, depth, m, false);
