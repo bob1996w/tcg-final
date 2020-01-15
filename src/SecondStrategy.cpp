@@ -73,6 +73,7 @@ int SecondStrategy::oldBoardScore2(Board* board) {
 */
 
 // calculate current ways to eat the pieces
+/*
 int SecondStrategy::boardScore(Board* board) {
     int ourTurn = rootColor, theirTurn = !rootColor;
     int ourScore = 0, theirScore = 0;
@@ -87,6 +88,100 @@ int SecondStrategy::boardScore(Board* board) {
         ourPType = board->block[l.at(i).second]->pieceType;
         theirScore += plyBasicScore[ourPType];
     }
+    printf("%d\n", ourScore - theirScore);
+    return ourScore - theirScore;
+}
+*/
+
+/*
+int SecondStrategy::boardScore(Board* board) {
+    int ourTurn = rootColor, theirTurn = !rootColor;
+    int ourScore = 0, theirScore = 0;
+    int ourPType, theirPType;
+
+    // eaten pieces
+    for (int type = 1; type < 8; ++type) {
+        ourScore += plyBasicScore[type] * (board->flippedNumPiece[theirTurn][type] - board->useableNumPiece[theirTurn][type]);
+        theirScore += plyBasicScore[type] * (board->flippedNumPiece[ourTurn][type] - board->useableNumPiece[ourTurn][type]);
+    }
+
+    // current on-board pieces
+    for (int i = 0; i < board->numPiece[ourTurn]; ++i) {
+        ourPType = board->piece[ourTurn][i]->pieceType;
+        for (int j = 0; j < board->numPiece[theirTurn]; ++j) {
+            theirPType = board->piece[theirTurn][j]->pieceType;
+            if (CAN_EAT_BY_MOVE[ourPType][theirPType]) {
+                ourScore += plyBasicScore[theirPType] / DIST[board->piece[ourTurn][i]->pos][board->piece[theirTurn][j]->pos];
+            }
+            if ((ourPType & 7) == PT_RC) {
+                // cannon can jump-eat all enemy pieces
+                ourScore += plyBasicScore[theirPType] / DIST[board->piece[ourTurn][i]->pos][board->piece[theirTurn][j]->pos];
+            }
+            
+            if (CAN_EAT_BY_MOVE[theirPType][ourPType]) {
+                theirScore += plyBasicScore[ourPType] / DIST[board->piece[ourTurn][i]->pos][board->piece[theirTurn][j]->pos];
+            }
+            if ((theirPType & 7) == PT_RC) {
+                // cannon can jump-eat all enemy pieces
+                theirScore += plyBasicScore[ourPType] / DIST[board->piece[ourTurn][i]->pos][board->piece[theirTurn][j]->pos];
+            }
+        }
+    }
+
+    // piece position score
+    for (int i = 0; i < board->numPiece[ourTurn]; ++i) {
+        ourScore += BOARD_POSITION_SCORE[board->piece[ourTurn][i]->pos];
+    }
+    
+    for (int i = 0; i < board->numPiece[theirTurn]; ++i) {
+        theirScore += BOARD_POSITION_SCORE[board->piece[theirTurn][i]->pos];
+    }
+    
+    //printf("%d\n", ourScore - theirScore);
+    return ourScore - theirScore;
+    //return ourScore;
+}
+*/
+
+int SecondStrategy::boardScore(Board* board) {
+    int ourTurn = rootColor, theirTurn = !rootColor;
+    int ourScore = 0, theirScore = 0;
+    int ourPType, theirPType;
+    for (int i = 0; i < board->numPiece[ourTurn]; ++i) {
+        ourPType = board->piece[ourTurn][i]->pieceType;
+        for (int j = 0; j < 16; ++j) {
+            if (!board->allPiece[theirTurn][j].isDead) {
+                theirPType = board->allPiece[theirTurn][j].pieceType;
+                if ((ourPType & 7) == PT_RC) {
+                    // cannon can jump-eat all enemy pieces
+                    ourScore += plyBasicScore[theirPType];
+                }
+                else {
+                    ourScore += (int)CAN_EAT_BY_MOVE[ourPType][theirPType] * plyBasicScore[theirPType];
+                }
+            }
+        }
+    }
+    for (int i = 0; i < board->numPiece[theirTurn]; ++i) {
+        theirPType = board->piece[theirTurn][i]->pieceType;
+        for (int j = 0; j < 16; ++j) {
+            if (!board->allPiece[ourTurn][j].isDead) {
+                ourPType = board->allPiece[ourTurn][j].pieceType;
+                if ((theirPType & 7) == PT_RC) {
+                    // cannon can jump-eat all enemy pieces
+                    theirScore += plyBasicScore[ourPType];
+                }
+                else {
+                    theirScore += (int)CAN_EAT_BY_MOVE[theirPType][ourPType] * plyBasicScore[ourPType];
+                }
+            }
+        }
+    }
+    for (int i = 1; i < 8; ++i) {
+        ourScore += (board->flippedNumPiece[theirTurn][i] - board->useableNumPiece[theirTurn][i])<< 5;
+        theirScore += (board->flippedNumPiece[ourTurn][i] - board->useableNumPiece[ourTurn][i]) << 5;
+    }
+    //printf("ourScore %d, theirScore %d\n");
     return ourScore - theirScore;
 }
 
@@ -106,6 +201,7 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
     transpositionTable = node->transpositionTable;
     searchExceedTimeLimit = false;
     rootColor = node->board.turn;
+    node->board.printBoard();
 #ifdef DEBUG
     fprintf(stdout, "::%s::genMove, turn=%d::node->numChild = %d\n", node->dewey().c_str(), node->board.turn, node->numChild);
     fflush(stdout);
@@ -146,9 +242,18 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
 
         // TODO: board needs to check win/lose conditions
     }
-    fprintf(stdout, "genMove::bestScore = %d\n", bestScore);
-    // TODO: fix the scoring to use the flip
-    if (bestScore < 0 && node->board.numPieceUnflipped[rootColor] > 0) {
+    int currentBoardScore = boardScore(&node->board);
+    fprintf(stdout, "genMove::currentBoardScore = %d, bestScore = %d\n", currentBoardScore, bestScore);
+    
+    //  if the best move is "eat", do so;
+    //  if the best move is "move":
+    //      if the score of best move is worse than current board's score && we have unflipped, flip;
+    //      else, send that best move.
+    if (!node->board.block[node->child[bestChild]->move.second]->isDead) {
+        // is eat
+        return node->child[bestChild]->move;
+    }
+    else if (bestScore <= currentBoardScore && node->board.numPieceUnflipped[rootColor] > 0) {
         fprintf(stdout, "genMove::use flip, numPieceUnflipped = red[%d], black[%d]\n", node->board.numPieceUnflipped[TURN_RED], node->board.numPieceUnflipped[TURN_BLACK]);
         return getMoveListFlip(&node->board, rootColor);
     }
@@ -165,7 +270,7 @@ int SecondStrategy::iterativeDeepening(TreeNode* node, int timeLimitMs) {
     int startTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(d).count();
     int endTimeMs = startTimeMs + timeLimitMs;
     
-    int maxDepth = 1;
+    int maxDepth = 3; // minimum depth = 3
     int bestScore = 0;
     while (true) {
         fprintf(stdout, "ID depth %d\n", maxDepth);
@@ -277,6 +382,7 @@ int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int be
 */
 
 int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int startTimeMs, int timeLimitMs) {
+    //printf("search::%d %d\n", node->board.turn, rootColor);
     // 展開child
     if (node == nullptr) {
         printf("search::node is nullptr\n");
@@ -312,7 +418,7 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
     int currentTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     // int elapsedTimeMs = currentTimeMs - startTimeMs;
     
-    if (currentTimeMs - startTimeMs >= timeLimitMs) {
+    if (currentTimeMs >= timeLimitMs) {
         fprintf(stdout, "search::searchExceedTimeLimit\n");fflush(stdout);
         searchExceedTimeLimit = true;
     }
@@ -514,7 +620,6 @@ MoveList SecondStrategy:: getMoveListMove(Board* board) {
     for (int pidx = 0; pidx < board->numPiece[turn]; ++pidx) {
         Piece* pc = board->piece[turn][pidx];
         int src = pc->pos;
-        int pType = pc->pieceType;
         for (int didx = 0; didx < MOVE_NUM[src]; ++didx) {
             int dst = src + MOVE_DIR[src][didx];
             if (board->block[dst]!=nullptr && board->block[dst]->isDead) {

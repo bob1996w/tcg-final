@@ -337,6 +337,11 @@ void Board::printMove(Move m) {
         if (block[m.second] == nullptr) {
             printf("  move %d %c -> %d X", m.first, PIECE2CHAR[block[m.first]->pieceType], m.second);
         }
-        printf("  move %d %c -> %d %c", m.first, PIECE2CHAR[block[m.first]->pieceType], m.second, PIECE2CHAR[block[m.second]->pieceType]);
+        else if (block[m.second]->isDead) {
+            printf("  move %d %c -> %d _", m.first, PIECE2CHAR[block[m.first]->pieceType], m.second);
+        }
+        else {
+            printf("  eat  %d %c -> %d %c", m.first, PIECE2CHAR[block[m.first]->pieceType], m.second, PIECE2CHAR[block[m.second]->pieceType]);
+        }
     }
 }

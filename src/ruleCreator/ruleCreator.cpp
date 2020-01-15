@@ -42,6 +42,17 @@ bool canEatTypeByJump [8][8] = {
 /*P*/{  0,  0,  0,  0,  0,  0,  0,  0,},
 };
 
+// small score additions when piece-eating cannot tell difference
+// also to prevent from wandering
+int boardPositionScore [60] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 1, 2, 2, 2, 2, 2, 2, 1, 0,
+    0, 2, 3, 3, 4, 4, 3, 3, 2, 0,
+    0, 2, 3, 3, 4, 4, 3, 3, 2, 0,
+    0, 1, 2, 2, 2, 2, 2, 2, 1, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+
 int main () {
     for (int i = 0; i < 6; ++i) {
         for (int j = 0; j < 10; ++j) {
@@ -256,6 +267,41 @@ static int ALL_PIECE_TYPE[14] = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}
             else {
                 cout << "0,";
             } 
+        }
+        cout << endl;
+    }
+    cout << "};" << endl;
+
+    
+
+    cout << endl;
+    cout << "static int DIST [60][60] = {" << endl;
+    for (int src = 0; src < 60; ++src) {
+        cout << "{";
+        for (int dst = 0; dst < 60; ++dst) {
+            int t1 = (src < dst)? src: dst;
+            int t2 = (src < dst)? dst: src;
+            int yDist = 0, xDist = 0;
+            while (t1/10 < t2/10) {
+                ++yDist;
+                t1 += DOWN;
+            }
+            while (t1 < t2) {
+                ++xDist;
+                t1 += RIGHT;
+            }
+            cout << yDist + xDist << ", ";
+        }
+        cout << "}," << endl;
+    }
+    cout << "};" << endl;
+
+    cout << endl;
+    cout << "static int BOARD_POSITION_SCORE [60] = {" << endl;
+    for (int i = 0; i < 6; ++i) {
+        for (int j = 0; j < 10; ++j) {
+            int idx = i * 10 + j;
+            cout << boardPositionScore[idx] << ",";
         }
         cout << endl;
     }
