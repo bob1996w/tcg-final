@@ -177,11 +177,8 @@ int SecondStrategy::boardScore(Board* board) {
             }
         }
     }
-    for (int i = 1; i < 8; ++i) {
-        ourScore += (board->flippedNumPiece[theirTurn][i] - board->useableNumPiece[theirTurn][i])<< 5;
-        theirScore += (board->flippedNumPiece[ourTurn][i] - board->useableNumPiece[ourTurn][i]) << 5;
-    }
-    //printf("ourScore %d, theirScore %d\n");
+    ourScore += (board->numPiece[ourTurn]) << 7;
+    theirScore += (board->numPiece[theirTurn]) << 7;
     return ourScore - theirScore;
 }
 
