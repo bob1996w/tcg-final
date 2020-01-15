@@ -74,6 +74,8 @@ int main(int argc, char *argv[]) {
             checkNewData();
             testTimerStart = chrono::steady_clock::now();
         //}
+        bobai.cleanUp();
+
         if (quitGame) {
             fprintf(stderr, "quit sent\n");
             fflush(stderr);
@@ -179,6 +181,8 @@ void checkNewData() {
             break;
         }
 
+        // clean up if there is uncleaned
+        bobai.cleanUp();
         // sleep and wait for next command (if there is)
         usleep(sleepMicroSecondBetweenCommand);
     } while (true);

@@ -83,15 +83,12 @@ public:
     bool time_settings(const char* data[], char* response);      // 15
     bool time_left(const char* data[], char* response);          // 16
     bool showboard(const char* data[], char* response);          // 17
+    void cleanUp();
 private:
     Board myBoard;
     TreeNode* root;
+    bool cleanedAfterGenMove = false;
     HashMap* transpositionTable;
     int Color;
     int Red_Time, Black_Time;
-    //int Board[32];
-    //int CloseChess[14];
-    void Pirnf_Chess(int chess_no, char* Result);
-    bool Referee(int* Board, int Startoint, int EndPoint, int color);
-    int Expand(int* Board, int color, int* Result);
 };
