@@ -63,11 +63,10 @@ int main() {
         static char *argv[] = {"helper", NULL};
 #endif
         */
-
 #ifdef SERVER2
-        execlp("/Users/bobwang/Documents/MasterTwo/tcg/final/r07922018/target/helper2", nullptr);
+        execlp("./helper2", nullptr);
 #else
-        execlp("/Users/bobwang/Documents/MasterTwo/tcg/final/r07922018/target/helper", nullptr);
+        execlp("./helper", nullptr);
 #endif
         
         fprintf(stderr, "Error occured when calling helper program: %d\n", errno);
