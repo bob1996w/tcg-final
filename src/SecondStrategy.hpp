@@ -3,7 +3,7 @@
 #include "IStrategy.hpp"
 #include "HashMap.hpp"
 #include <climits>
-#include <chrono>
+#include "Utility.hpp"
 
 #define MAX(a,b) ((a > b) ? a : b)
 #define MIN(a,b) ((a > b) ? b : a)
@@ -50,8 +50,8 @@ private:
     // move list that only contains move
     MoveList getMoveListMove(Board* board);
 
-    int iterativeDeepening(TreeNode* node, int timeLimitMs);
+    std::pair<int, int> iterativeDeepening(TreeNode* node, int timeLimitMs);
     // MiniMax NegaScout, algorithm F4' and G4'.
-    int search(TreeNode* node, int alpha, int beta, int maxDepth, int startTimeMs, int timeLimitMs);
-    int searchNegaScout(TreeNode* node, int depth, int alpha, int beta, int startTimeMs, int timeLimitMs);
+    int search(TreeNode* node, int alpha, int beta, int maxDepth, int endTimeMs);
+    int searchNegaScout(TreeNode* node, int depth, int alpha, int beta, int endTimeMs);
 };

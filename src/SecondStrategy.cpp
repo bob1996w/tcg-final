@@ -201,13 +201,9 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
     transpositionTable = node->transpositionTable;
     searchExceedTimeLimit = false;
     rootColor = node->board.turn;
-    node->board.printBoard();
-#ifdef DEBUG
-    fprintf(stdout, "::%s::genMove, turn=%d::node->numChild = %d\n", node->dewey().c_str(), node->board.turn, node->numChild);
-    fflush(stdout);
-#endif
+
+    // generate child
     if (node->numChild == 0) {
-        fprintf(stdout, "genMove::generating child\n");
         fflush(stdout);
         MoveList moves = getOrderedMoveList(&node->board);
         fprintf(stdout, "genMove::generated %d childs\n", moves.size()); fflush(stdout);
@@ -222,28 +218,18 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
     int timeLimitMs = (node->board.depth < 10)? 1000 : 
             (node->board.depth < 80 && leftTimeMs >= 300000) ? (leftTimeMs - 300000) / (120 - node->board.depth) :
             (leftTimeMs - 20000) / 40;
-    int perChildTimeLimitMs = timeLimitMs / node->numChild;
-    fprintf(stdout, "genMove::depth %d, time: T = %d, t = %d, c = %d ms\n", node->board.depth, leftTimeMs, timeLimitMs, perChildTimeLimitMs);
+    fprintf(stdout, "genMove::depth %d, time: T = %d, t = %d\n", node->board.depth, leftTimeMs, timeLimitMs);
     fflush(stdout);
 
-    int bestScore = INT_MIN;
-    int bestChild = -1;
-    for (int i = 0; i < node->numChild; ++i) {
-        searchExceedTimeLimit = false;
-        int score = iterativeDeepening(node->child[i], perChildTimeLimitMs);
-        fprintf(stdout, "genMove::ID %d / %d", i + 1, node->numChild);
-        node->board.printMove(node->child[i]->move);
-        fprintf(stdout, ", %d\n", score);
-        fflush(stdout);
-        if (score > bestScore) {
-            fprintf(stdout, "genMove::score %d > bestScore %d\n", score, bestScore);
-            bestScore = score;
-            bestChild = i;
-        }
-    }
+    // iterative deepening
+    std::pair<int, int> bestCandidate = iterativeDeepening(node, timeLimitMs);
+    int bestChild = bestCandidate.first;
+    int bestScore = bestCandidate.second;
+
     int currentBoardScore = boardScore(&node->board);
     fprintf(stdout, "genMove::currentBoardScore = %d, bestScore = %d\n", currentBoardScore, bestScore);
     
+    // decide final move:
     //  if the best move is "eat", do so;
     //  if the best move is "move":
     //      if the score of best move is worse than current board's score && we have unflipped, flip;
@@ -262,43 +248,51 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
 
 }
 
-int SecondStrategy::iterativeDeepening(TreeNode* node, int timeLimitMs) {
-    // set timer
-
-    auto d = std::chrono::steady_clock::now().time_since_epoch();
-    int startTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(d).count();
+// return std::pair<child#, childScore>
+std::pair<int, int> SecondStrategy::iterativeDeepening(TreeNode* node, int timeLimitMs) {
+    int startTimeMs = Utility::timer();
     int endTimeMs = startTimeMs + timeLimitMs;
-    
-    int maxDepth = 3; // minimum depth = 3
-    int bestScore = 0;
-    while (true) {
-        fprintf(stdout, "ID depth %d, ID = %d\n", maxDepth, searchExceedTimeLimit);
-        fflush(stdout);
-        int currentTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        if (currentTimeMs >= endTimeMs) {
-            break;
-        }
-        int currentScore = search(node, INT_MIN, INT_MAX, maxDepth, currentTimeMs, endTimeMs);
-        //int currentScore = searchNegaScout(node, maxDepth, INT_MIN, INT_MAX, currentTimeMs, endTimeMs);
 
-        if (!searchExceedTimeLimit) {
-            bestScore = currentScore;
+    int depth = 3;
+    int bestScoreForFinishedDepth = INT_MIN, bestChildForFinishedDepth = -1;
+    int bestScoreForCurrentDepth = INT_MIN, bestChildForCurrentDepth = -1;
+    int score;
+    searchExceedTimeLimit = false;
+
+    while (true) {
+        fprintf(stdout, "ID::search depth %d\n", depth);
+        for (int c = 0; c < node->numChild; ++c) {
+            score = search(node->child[c], INT_MIN, INT_MAX, depth, endTimeMs);
+            // score = searchNegaScout(node, depth, INT_MIN, INT_MAX, startTime, endTimeMs);
+            if (searchExceedTimeLimit) {
+                // return bestScoreForFinishedDepth and bestChildForFinishedDepth
+                break;
+            }
+            else {
+                if (score > bestScoreForCurrentDepth) {
+                    bestScoreForCurrentDepth = score;
+                    bestChildForCurrentDepth = c;
+                }
+            }
+        }
+        if (searchExceedTimeLimit) {
+            break;
         }
         else {
-            // if exceed time limit, we cannot use it the score.
+            bestScoreForFinishedDepth = bestScoreForCurrentDepth;
+            bestChildForFinishedDepth = bestChildForCurrentDepth;
+            bestScoreForCurrentDepth = INT_MIN;
+            bestChildForCurrentDepth = -1;
+            ++depth;
+        }
+        if (depth > 30) {
             break;
         }
-        // to prevent searching too much
-        if (maxDepth > 20) {
-            break;
-        }
-        ++maxDepth;
     }
-    return bestScore;
+    return std::pair<int, int>(bestChildForFinishedDepth, bestScoreForFinishedDepth);
 }
 
-
-int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int beta, int startTimeMs, int timeLimitMs) {
+int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int beta, int endTimeMs) {
     int originalAlpha = alpha;
 
     HashMapNode* tableResult = transpositionTable->get(node->board.hash);
@@ -319,7 +313,7 @@ int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int be
         }
     }
 
-    int currentTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    int currentTimeMs = Utility::timer();
 
     if (node->board.winner == rootColor) {
         return 100000;
@@ -329,7 +323,7 @@ int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int be
         return -100000;
     }
 
-    if (currentTimeMs >= timeLimitMs) {
+    if (currentTimeMs >= endTimeMs) {
         searchExceedTimeLimit = true;
     }
 
@@ -350,14 +344,14 @@ int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int be
     int currentLowerBound = INT_MIN;
     int currentUpperBound = beta;
     for (int i = 0; i < node->numChild; ++i) {
-        temp = (-1) * searchNegaScout(node->child[i], depth - 1, (-1) * currentUpperBound, (-1) * std::max(alpha, currentLowerBound), startTimeMs, timeLimitMs);
+        temp = (-1) * searchNegaScout(node->child[i], depth - 1, (-1) * currentUpperBound, (-1) * std::max(alpha, currentLowerBound), endTimeMs);
         if (temp > currentLowerBound) {
             if (currentUpperBound == beta || depth < 3 || temp >= beta) {
                 currentLowerBound = temp;
             }
             else {
                 // re-search
-                currentLowerBound = (-1) * searchNegaScout(node->child[i], depth - 1, (-1) * beta, (-1) * temp, startTimeMs, timeLimitMs);
+                currentLowerBound = (-1) * searchNegaScout(node->child[i], depth - 1, (-1) * beta, (-1) * temp, endTimeMs);
             }
         }
         
@@ -380,7 +374,7 @@ int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int be
 }
 
 
-int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int startTimeMs, int timeLimitMs) {
+int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int endTimeMs) {
     //printf("search::%d %d\n", node->board.turn, rootColor);
     // 展開child
     if (node == nullptr) {
@@ -414,9 +408,9 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
     }
 
     // check timeout
-    int currentTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    int currentTimeMs = Utility::timer();
     
-    if (currentTimeMs >= timeLimitMs) {
+    if (currentTimeMs >= endTimeMs) {
         searchExceedTimeLimit = true;
     }
 
@@ -429,14 +423,14 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
         // max node, algorithm F4'
         int m = INT_MIN, t; // m is current best lower bound; fail soft
         if (tableResult != nullptr) { m = tableResult->score; }
-        m = std::max(m, search(node->child[0], alpha, beta, depth - 1, startTimeMs, timeLimitMs)); // test first branch, enter G4'
+        m = std::max(m, search(node->child[0], alpha, beta, depth - 1, endTimeMs)); // test first branch, enter G4'
         if (m >= beta) {
             // beta cut-off
             transpositionTable->insert(node->board.hash, depth, m, FLAG_LOWERBOUND);
             return m;
         }
         for (int i = 1; i < node->numChild; ++i) {
-            t = search(node->child[i], m, m + 1, depth - 1, startTimeMs, timeLimitMs); // null-window search
+            t = search(node->child[i], m, m + 1, depth - 1, endTimeMs); // null-window search
             if (t > m) {
                 // failed high
                 if (depth < 3 || t >= beta) {
@@ -444,7 +438,7 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
                 }
                 else {
                     // beta cut-off, re-search
-                    m = search(node->child[i], t, beta, depth - 1, startTimeMs, timeLimitMs); // G4'
+                    m = search(node->child[i], t, beta, depth - 1, endTimeMs); // G4'
                 }
             }
             if (m >= beta) {
@@ -465,14 +459,14 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
         // min node, algorithm G4'
         int m = INT_MAX, t; // m is current best upper bound, fail soft
         if (tableResult != nullptr) { m = tableResult->score; }
-        m = std::min(m, search(node->child[0], alpha, beta, depth - 1, startTimeMs, timeLimitMs));
+        m = std::min(m, search(node->child[0], alpha, beta, depth - 1, endTimeMs));
         if (m <= alpha) {
             // alpha cut-off
             transpositionTable->insert(node->board.hash, depth, m, FLAG_UPPERBOUND);
             return m;
         }
         for (int i = 1; i < node->numChild; ++i) {
-            t = search(node->child[i], m - 1, m, depth - 1, startTimeMs, timeLimitMs); // null-window search
+            t = search(node->child[i], m - 1, m, depth - 1, endTimeMs); // null-window search
             if (t < m) {
                 // failed low
                 if (depth < 3 || t <= alpha) {
@@ -480,7 +474,7 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
                 }
                 else {
                     // alpha cut-off, re-search
-                    m = search(node->child[i], alpha, t, depth - 1, startTimeMs, timeLimitMs);
+                    m = search(node->child[i], alpha, t, depth - 1, endTimeMs);
                 }
             }
             if (m <= alpha) {
