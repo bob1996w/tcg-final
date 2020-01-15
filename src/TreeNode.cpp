@@ -1,6 +1,11 @@
 #include "TreeNode.hpp"
 
-TreeNode::TreeNode(TreeNode* p, Board& b, HashMap* tb) {
+TreeNode::TreeNode() {
+    // empty constructor
+}
+
+void TreeNode::setUpTreeNode(TreeNode* p, Board& b, HashMap* tb) {
+    numChild = 0;
     this->parent = p;
     if (p != nullptr && p->hasBeenInChanceNode) {
         hasBeenInChanceNode = true;
@@ -10,8 +15,9 @@ TreeNode::TreeNode(TreeNode* p, Board& b, HashMap* tb) {
     transpositionTable = tb;
 }
 
-TreeNode::TreeNode(TreeNode* p, Board& b, Move m) {
-    this->parent = p;
+void TreeNode::setUpTreeNode(TreeNode* p, Board& b, Move m) {
+    numChild = 0;
+    parent = p;
     if (p != nullptr && p->hasBeenInChanceNode) {
         hasBeenInChanceNode = true;
     }
@@ -48,7 +54,7 @@ TreeNode::TreeNode(TreeNode* p, Board& b, Move m) {
     }
 }
 
-TreeNode::TreeNode(TreeNode* p, Board& b, Flip f) {
+void TreeNode::setUpTreeNode(TreeNode* p, Board& b, Flip f) {
     this->parent = p;
     // this->move is not copied from Flip.
     if (p != nullptr && p->hasBeenInChanceNode) {
@@ -58,21 +64,6 @@ TreeNode::TreeNode(TreeNode* p, Board& b, Flip f) {
     strategy = nullptr;
     flippedPiece = f.second;
     board.applyFlip(f);
-}
-
-TreeNode::~TreeNode() {
-    // FIXME: something wrong when deleting the TreeNode.
-    if (strategy != nullptr) {
-        delete strategy;
-    }
-    if (child != nullptr) {
-        for (int i = 0; i < numChild; ++i) {
-            if (child[i] != nullptr) {
-                delete child[i];
-            }
-        }
-        delete[] child;
-    }
 }
 
 void TreeNode::setStrategy(IStrategy* s) {
@@ -103,12 +94,11 @@ MoveList TreeNode::getOrderedMoveList() {
 
 void TreeNode::generateChilds(MoveList list) {
     numChild = (int) list.size();
-    child = new TreeNode*[numChild];
-    // printf(" TreeNode::generateChilds, this.board.turn = %d\n", board.turn);
 
     for (int i = 0; i < numChild; ++i) {
         Move m = list[i];
-        child[i] = new TreeNode(this, board, m);
+        child[i] = NodePool::alloc();
+        child[i]->setUpTreeNode(this, board, m);
 #ifdef DEBUG
         child[i]->dewey_part = std::to_string(i);
 #endif

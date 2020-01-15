@@ -105,13 +105,12 @@ bool BobAI::genmove(const char* data[], char* response) {
             myBoard.turn = TURN_UNKNOWN;
         }
     }
-    if (root != nullptr) {
-        fprintf(stdout, "attempt to delete root\n");fflush(stdout);fflush(stderr);
-        delete root;
-        fprintf(stdout, "successful delete root\n");fflush(stdout);fflush(stderr);
-    }
+    fprintf(stdout, "attempt to delete root\n");fflush(stdout);fflush(stderr);
+    NodePool::free(root);
+    fprintf(stdout, "successful delete root\n");fflush(stdout);fflush(stderr);
     char move[6];
-    root = new TreeNode(nullptr, myBoard, transpositionTable);
+    root = NodePool::alloc();
+    root->setUpTreeNode(nullptr, myBoard, transpositionTable);
 #ifdef DEBUG
     root -> dewey_part = "root";
 #endif

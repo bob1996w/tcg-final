@@ -1,6 +1,6 @@
 CPLUSPLUS = g++ -std=c++11  -Wall
-LIB = BobAI.o Board.o CustomTypes.o IStrategy.o Piece.o Utility.o SimpleStrategy.o TreeNode.o EarlyGameStrategy.o SecondStrategy.o HashMap.o
-ALLFILES = src/main_agent.cpp src/main_helper.cpp src/Board.cpp src/BobAI.cpp src/CDCRule.cpp src/CustomTypes.cpp src/ISTrategy.cpp src/Piece.cpp src/Utility.cpp src/SimpleStrategy.cpp src/TreeNode.cpp src/EarlyGameStrategy.cpp src/SecondStrategy.cpp src/HashMap.cpp
+LIB = BobAI.o Board.o CustomTypes.o IStrategy.o Piece.o Utility.o TreeNode.o EarlyGameStrategy.o SecondStrategy.o HashMap.o NodePool.o
+ALLFILES = src/main_agent.cpp src/main_helper.cpp src/Board.cpp src/BobAI.cpp src/CDCRule.cpp src/CustomTypes.cpp src/ISTrategy.cpp src/Piece.cpp src/Utility.cpp src/TreeNode.cpp src/EarlyGameStrategy.cpp src/SecondStrategy.cpp src/HashMap.cpp src/NodePool.cpp
 DEL = rm -f
 
 all:

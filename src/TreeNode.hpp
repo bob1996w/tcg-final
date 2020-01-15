@@ -4,6 +4,7 @@
 #include "CustomTypes.hpp"
 #include "Board.hpp"
 #include "HashMap.hpp"
+#include "NodePool.hpp"
 
 #include "IStrategy.hpp"
 #include "SimpleStrategy.hpp"
@@ -18,7 +19,7 @@
 class TreeNode {
 public:
     TreeNode* parent = nullptr;
-    TreeNode** child = nullptr;
+    TreeNode* child[80];
     int numChild = 0;
     // move from its parent
     Move move;
@@ -47,14 +48,15 @@ public:
     }
     // TODO: put dewey on all function calling the constructor.
 #endif
+    // empty constuctor
+    TreeNode();
+    // set up for single Root TreeNode
+    void setUpTreeNode(TreeNode* p, Board& b, HashMap* tb);
+    // set up  for TreeNode pply a move/flip chance node to it
+    void setUpTreeNode(TreeNode* p, Board& b, Move m);
+    // set up  for TreeNode and a flip result
+    void setUpTreeNode(TreeNode* p, Board& b, Flip f);
 
-    // constructor for single Root TreeNode
-    TreeNode(TreeNode* p, Board& b, HashMap* tb);
-    // constructor for TreeNode pply a move/flip chance node to it
-    TreeNode(TreeNode* p, Board& b, Move m);
-    // constructor for TreeNode and a flip result
-    TreeNode(TreeNode* p, Board& b, Flip f);
-    ~TreeNode();
     void setStrategy(IStrategy* s);
     void genMove(char move[6], int timeLimitMs);
     void generateChilds(MoveList list);

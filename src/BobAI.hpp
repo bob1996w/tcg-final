@@ -7,6 +7,7 @@
 #include "Board.hpp"
 #include "TreeNode.hpp"
 #include "HashMap.hpp"
+#include "NodePool.hpp"
 
 #include "IStrategy.hpp"
 
