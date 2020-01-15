@@ -53,5 +53,5 @@ private:
     int iterativeDeepening(TreeNode* node, int timeLimitMs);
     // MiniMax NegaScout, algorithm F4' and G4'.
     int search(TreeNode* node, int alpha, int beta, int maxDepth, int startTimeMs, int timeLimitMs);
-    // int searchNegaScout(TreeNode* node, int depth, int alpha, int beta, int startTimeMs, int timeLimitMs);
+    int searchNegaScout(TreeNode* node, int depth, int alpha, int beta, int startTimeMs, int timeLimitMs);
 };

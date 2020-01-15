@@ -229,6 +229,7 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
     int bestScore = INT_MIN;
     int bestChild = -1;
     for (int i = 0; i < node->numChild; ++i) {
+        searchExceedTimeLimit = false;
         int score = iterativeDeepening(node->child[i], perChildTimeLimitMs);
         fprintf(stdout, "genMove::ID %d / %d", i + 1, node->numChild);
         node->board.printMove(node->child[i]->move);
@@ -239,8 +240,6 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
             bestScore = score;
             bestChild = i;
         }
-
-        // TODO: board needs to check win/lose conditions
     }
     int currentBoardScore = boardScore(&node->board);
     fprintf(stdout, "genMove::currentBoardScore = %d, bestScore = %d\n", currentBoardScore, bestScore);
@@ -273,7 +272,7 @@ int SecondStrategy::iterativeDeepening(TreeNode* node, int timeLimitMs) {
     int maxDepth = 3; // minimum depth = 3
     int bestScore = 0;
     while (true) {
-        fprintf(stdout, "ID depth %d\n", maxDepth);
+        fprintf(stdout, "ID depth %d, ID = %d\n", maxDepth, searchExceedTimeLimit);
         fflush(stdout);
         int currentTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
         if (currentTimeMs >= endTimeMs) {
@@ -285,11 +284,12 @@ int SecondStrategy::iterativeDeepening(TreeNode* node, int timeLimitMs) {
         if (!searchExceedTimeLimit) {
             bestScore = currentScore;
         }
-        if (searchExceedTimeLimit) {
+        else {
+            // if exceed time limit, we cannot use it the score.
             break;
         }
         // to prevent searching too much
-        if (maxDepth > 10) {
+        if (maxDepth > 20) {
             break;
         }
         ++maxDepth;
@@ -297,7 +297,7 @@ int SecondStrategy::iterativeDeepening(TreeNode* node, int timeLimitMs) {
     return bestScore;
 }
 
-/*
+
 int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int beta, int startTimeMs, int timeLimitMs) {
     int originalAlpha = alpha;
 
@@ -329,7 +329,7 @@ int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int be
         return -100000;
     }
 
-    if (currentTimeMs - startTimeMs >= timeLimitMs) {
+    if (currentTimeMs >= timeLimitMs) {
         searchExceedTimeLimit = true;
     }
 
@@ -370,16 +370,15 @@ int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int be
         // set up a null window
         currentUpperBound = std::max(alpha, currentLowerBound) + 1; 
     }
-    if (currentLowerBound > originalAlpha) {
+    if (currentLowerBound >= originalAlpha) {
         transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_EXACT);
     }
     else {
         transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_UPPERBOUND);
     }
     return currentLowerBound;
-    
 }
-*/
+
 
 int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int startTimeMs, int timeLimitMs) {
     //printf("search::%d %d\n", node->board.turn, rootColor);
@@ -416,10 +415,8 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
 
     // check timeout
     int currentTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    // int elapsedTimeMs = currentTimeMs - startTimeMs;
     
     if (currentTimeMs >= timeLimitMs) {
-        fprintf(stdout, "search::searchExceedTimeLimit\n");fflush(stdout);
         searchExceedTimeLimit = true;
     }
 
@@ -501,6 +498,7 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
         return m;
     }
 }
+
 
 
 Move SecondStrategy::getMoveListFlip(Board* board, int turn) {
