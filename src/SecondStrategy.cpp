@@ -175,6 +175,7 @@ int SecondStrategy::iterativeDeepening(TreeNode* node, int timeLimitMs) {
             break;
         }
         int currentScore = search(node, INT_MIN, INT_MAX, maxDepth, currentTimeMs, endTimeMs);
+        //int currentScore = searchNegaScout(node, maxDepth, INT_MIN, INT_MAX, currentTimeMs, endTimeMs);
 
         if (!searchExceedTimeLimit) {
             bestScore = currentScore;
@@ -191,7 +192,91 @@ int SecondStrategy::iterativeDeepening(TreeNode* node, int timeLimitMs) {
     return bestScore;
 }
 
-int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int startTimeMs, int timeLimitMs, bool byFlip/* = false */) {
+/*
+int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int beta, int startTimeMs, int timeLimitMs) {
+    int originalAlpha = alpha;
+
+    HashMapNode* tableResult = transpositionTable->get(node->board.hash);
+    if (tableResult != nullptr && tableResult->searchDepth >= depth) {
+        if (tableResult->exactValueFlag == FLAG_EXACT) {
+            return tableResult->score;
+        }
+        else if (tableResult->exactValueFlag == FLAG_LOWERBOUND) {
+            alpha = std::max(alpha, tableResult->score);
+        }
+        else if (tableResult->exactValueFlag == FLAG_UPPERBOUND) {
+            beta = std::min(beta, tableResult->score);
+        }
+
+        if (alpha >= beta) {
+            // cut off
+            return tableResult->score;
+        }
+    }
+
+    int currentTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+
+    if (node->board.winner == rootColor) {
+        return 100000;
+    }
+
+    if (node->board.winner == !rootColor) {
+        return -100000;
+    }
+
+    if (currentTimeMs - startTimeMs >= timeLimitMs) {
+        searchExceedTimeLimit = true;
+    }
+
+    if (depth == 0 || searchExceedTimeLimit) {
+        return boardScore(&node->board) * (node->board.turn == rootColor? 1 : -1);
+    }
+
+    // generate child
+    if (node->numChild == 0) {
+        MoveList moves = getOrderedMoveList(&node->board);
+        if (moves.size() == 0) {
+            return boardScore(&node->board) * (node->board.turn == rootColor? 1 : -1);
+        }
+        node->generateChilds(moves);
+    }
+
+    int temp;
+    int currentLowerBound = INT_MIN;
+    int currentUpperBound = beta;
+    for (int i = 0; i < node->numChild; ++i) {
+        temp = (-1) * searchNegaScout(node->child[i], depth - 1, (-1) * currentUpperBound, (-1) * std::max(alpha, currentLowerBound), startTimeMs, timeLimitMs);
+        if (temp > currentLowerBound) {
+            if (currentUpperBound == beta || depth < 3 || temp >= beta) {
+                currentLowerBound = temp;
+            }
+            else {
+                // re-search
+                currentLowerBound = (-1) * searchNegaScout(node->child[i], depth - 1, (-1) * beta, (-1) * temp, startTimeMs, timeLimitMs);
+            }
+        }
+        
+        if (currentLowerBound >= beta) {
+            // beta cut-off
+            // save to hashTable?
+            transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_LOWERBOUND);
+            return currentLowerBound;
+        }
+        // set up a null window
+        currentUpperBound = std::max(alpha, currentLowerBound) + 1; 
+    }
+    if (currentLowerBound > originalAlpha) {
+        transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_EXACT);
+    }
+    else {
+        transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_UPPERBOUND);
+    }
+    return currentLowerBound;
+    
+}
+*/
+
+int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int startTimeMs, int timeLimitMs) {
     // 展開child
     if (node == nullptr) {
         printf("search::node is nullptr\n");
@@ -210,8 +295,7 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
     
     // check if current position in transposition table
     HashMapNode* tableResult = transpositionTable->get(node->board.hash);
-    if (tableResult != nullptr && tableResult->searchDepth >= depth && tableResult->isExactValue) {
-        printf("early return\n");
+    if (tableResult != nullptr && tableResult->searchDepth >= depth && tableResult->exactValueFlag == FLAG_EXACT) {
         return tableResult->score;
     }
 
@@ -219,16 +303,10 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
     if (node->numChild == 0) {
         MoveList moves = getOrderedMoveList(&node->board);
         if (moves.size() == 0) {
-#ifdef DEBUG
-            //fprintf(stdout, "%s::search::depth %d::boardDepth %d::no move list, return boardScore\n", node->dewey().c_str(), depth, node->board.depth);
-#endif
             return boardScore(&node->board);
         }
         node->generateChilds(moves);
     }
-#ifdef DEBUG
-    //fprintf(stdout, "%s::search::depth %d::boardDepth %d::before unfold childs; numChild = %d\n", node->dewey().c_str(),depth, node->board.depth, node->numChild);fflush(stdout);
-#endif
 
     // check timeout
     int currentTimeMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -240,46 +318,18 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
     }
 
     // if is a terminal node || over depth -> abort
-    if (searchExceedTimeLimit || node->numChild == 0 || depth <= 0 /* || win/lose */) {
+    if (searchExceedTimeLimit || node->numChild == 0 || depth <= 0) {
         return boardScore(&node->board);
-    }
-
-    // if this is a chance node
-    if (node->isChanceNode) {
-#ifdef DEBUG
-        //fprintf(stdout, "%s::search::chanceNode\n", node->dewey().c_str());
-#endif
-        // algorithm Star0_F3.0'
-        // the depths of a chance node's child are deemed same,
-        // so we don't minus 1 on depth.
-
-        // the text book says all possible pieces has equal chances, so...
-        int chanceNodeScore = 0;
-        int totalPossiblePieces = 0;
-        for (int i = 0; i < node->numChild; ++i) {
-                ++totalPossiblePieces;
-#ifdef DEBUG
-                fprintf(stdout, "%s::search::get Chance node score for child %d", node->dewey().c_str(), i);
-                fflush(stdout);
-#endif
-                chanceNodeScore += search(node->child[i], alpha, beta, depth, startTimeMs, timeLimitMs);
-            
-        }
-        return chanceNodeScore / totalPossiblePieces;
     }
     
     if (node->board.turn == rootColor) {
-#ifdef DEBUG
-        //fprintf(stdout, "%s::search::MAX node, %d\n", node->dewey().c_str(), node->board.turn);
-        //fflush(stdout);
-#endif
         // max node, algorithm F4'
         int m = INT_MIN, t; // m is current best lower bound; fail soft
         if (tableResult != nullptr) { m = tableResult->score; }
         m = std::max(m, search(node->child[0], alpha, beta, depth - 1, startTimeMs, timeLimitMs)); // test first branch, enter G4'
         if (m >= beta) {
             // beta cut-off
-            transpositionTable->insert(node->board.hash, depth, m, false);
+            transpositionTable->insert(node->board.hash, depth, m, FLAG_LOWERBOUND);
             return m;
         }
         for (int i = 1; i < node->numChild; ++i) {
@@ -296,30 +346,26 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
             }
             if (m >= beta) {
                 // beta cut-off
-                transpositionTable->insert(node->board.hash, depth, m, false);
+                transpositionTable->insert(node->board.hash, depth, m, FLAG_LOWERBOUND);
                 return m;
             }
         }
-        if (m > beta) {
-            transpositionTable->insert(node->board.hash, depth, m, true);
+        if (m > alpha) {
+            transpositionTable->insert(node->board.hash, depth, m, FLAG_EXACT);
         }
         else {
-            transpositionTable->insert(node->board.hash, depth, m, false);
+            transpositionTable->insert(node->board.hash, depth, m, FLAG_UPPERBOUND);
         }
         return m;
     }
     else {
-#ifdef DEBUG
-        //fprintf(stdout, "%s::search::MIN node, %d\n", node->dewey().c_str(), node->board.turn);
-        //fflush(stdout);
-#endif
         // min node, algorithm G4'
         int m = INT_MAX, t; // m is current best upper bound, fail soft
         if (tableResult != nullptr) { m = tableResult->score; }
         m = std::min(m, search(node->child[0], alpha, beta, depth - 1, startTimeMs, timeLimitMs));
         if (m <= alpha) {
             // alpha cut-off
-            transpositionTable->insert(node->board.hash, depth, m, false);
+            transpositionTable->insert(node->board.hash, depth, m, FLAG_UPPERBOUND);
             return m;
         }
         for (int i = 1; i < node->numChild; ++i) {
@@ -336,19 +382,20 @@ int SecondStrategy::search(TreeNode* node, int alpha, int beta, int depth, int s
             }
             if (m <= alpha) {
                 // alpha cut-off
-                transpositionTable->insert(node->board.hash, depth, m, false);
+                transpositionTable->insert(node->board.hash, depth, m, FLAG_UPPERBOUND);
                 return m;
             }
         }
-        if (m < alpha) {
-            transpositionTable->insert(node->board.hash, depth, m, true);
+        if (m < beta) {
+            transpositionTable->insert(node->board.hash, depth, m, FLAG_EXACT);
         }
         else {
-            transpositionTable->insert(node->board.hash, depth, m, false);
+            transpositionTable->insert(node->board.hash, depth, m, FLAG_LOWERBOUND);
         }
         return m;
     }
 }
+
 
 Move SecondStrategy::getMoveListFlip(Board* board, int turn) {
     if (board->numPieceUnflipped[board->turn] == 0) {

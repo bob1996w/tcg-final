@@ -14,7 +14,7 @@ int HashMap::getKey(Hash fullHash) {
 }
 
 // true: new node, false: exist node.
-bool HashMap::insert(Hash fullHash, int nSearchDepth, int nScore, bool nIsExactValue) {
+bool HashMap::insert(Hash fullHash, int nSearchDepth, int nScore, int nExactValueFlag) {
     int key = getKey(fullHash);
     HashMapNode* currentList = list[key];
     HashMapNode* node = currentList;
@@ -24,7 +24,7 @@ bool HashMap::insert(Hash fullHash, int nSearchDepth, int nScore, bool nIsExactV
                 // new depth deeper or equal to old depth, so update
                 node->searchDepth = nSearchDepth;
                 node->score = nScore;
-                node->isExactValue = nIsExactValue;
+                node->exactValueFlag = nExactValueFlag;
             }
             return false;
         }
@@ -36,6 +36,7 @@ bool HashMap::insert(Hash fullHash, int nSearchDepth, int nScore, bool nIsExactV
     newNode->hash = fullHash;
     newNode->searchDepth = nSearchDepth;
     newNode->score = nScore;
+    newNode->exactValueFlag = nExactValueFlag;
     newNode->next = currentList;
     list[key] = newNode;
     return true;
