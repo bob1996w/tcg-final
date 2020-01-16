@@ -172,10 +172,10 @@ int SecondStrategy::boardScore(Board* board) {
     for (int i = 0; i < board->numPiece[theirTurn]; ++i) {
         theirPType = board->piece[theirTurn][i]->pieceType;
         if ((theirPType& 7) == PT_RP) {
-            theirScore += plyBasicScore[ourPType] * board->useableNumPiece[theirTurn][PT_RK] + ediblePly[theirTurn][theirPType& 7] + BOARD_POSITION_SCORE[board->piece[theirTurn][i]->pos];
+            theirScore += plyBasicScore[theirPType] * board->useableNumPiece[ourTurn][PT_RK] + ediblePly[theirTurn][theirPType& 7] + BOARD_POSITION_SCORE[board->piece[theirTurn][i]->pos];
         }
         else {
-            theirScore += plyBasicScore[ourPType] + ediblePly[theirTurn][theirPType& 7] + BOARD_POSITION_SCORE[board->piece[theirTurn][i]->pos];
+            theirScore += plyBasicScore[theirPType] + ediblePly[theirTurn][theirPType& 7] + BOARD_POSITION_SCORE[board->piece[theirTurn][i]->pos];
         }
     }
 
