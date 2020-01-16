@@ -4,9 +4,23 @@
 #include "SecondStrategy.hpp"
 
 void EarlyGameStrategy::updateStrategy(TreeNode* node) {
+    /*
+    int rootColor = node->board.turn;
+    if (rootColor < 2) {
+        int ourLeftPiece = node->board.numPieceUnflipped[(int)rootColor] + node->board.numPiece[(int)rootColor];
+        int theirLeftPiece = node->board.numPieceUnflipped[(int)(!rootColor)] + node->board.numPiece[(int)(!rootColor)];
+        fprintf(stdout, "SecondStrategy::Update::ourLeft = %d, theirLeft = %d\n", ourLeftPiece, theirLeftPiece);
+        if (ourLeftPiece <= 5 || theirLeftPiece <= 5 || node->board.numPieceUnflipped[0] + node->board.numPieceUnflipped[1] == 0) {
+            node->setStrategy(new EndGameStrategy());
+            printf("!Set strategy to EndGameStrategy\n");
+            return;
+        }
+    } 
+    */
     if (node->board.numPiece[TURN_RED] + node->board.numPiece[TURN_BLACK] >= 1) {
         node->setStrategy(new SecondStrategy());
         printf("!Set strategy to SecondStrategy\n");
+        return;
     }
 }
 

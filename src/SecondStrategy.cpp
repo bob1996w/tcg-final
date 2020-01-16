@@ -6,9 +6,8 @@
 int SecondStrategy::plyBasicScore[] = {0, 165, 80, 50, 40, 30, 75, 20, /**/ 0, 165, 80, 50, 40, 30, 75, 20};
 
 void SecondStrategy::updateStrategy(TreeNode* node) {
-    // no update
+    // not updated from here
 }
-
 /*
 int SecondStrategy::oldBoardScore(Board* board) {
     // TODO: cache from the Transposition table
@@ -147,36 +146,39 @@ int SecondStrategy::boardScore(Board* board) {
     int ourTurn = rootColor, theirTurn = !rootColor;
     int ourScore = 0, theirScore = 0;
     int ourPType, theirPType;
+
+    int ediblePly[2][8] = {0}; // how many ply can we eat?
+    for (int i = 0; i < 16; ++i) {
+        for (int j = 0; j < 16; ++j) {
+            if (CAN_EAT_BY_MOVE[i][j]) {
+                ediblePly[i >> 3][i & 7] += board->useableNumPiece[j >> 3][j & 7];
+            }
+            if (CAN_EAT_BY_JUMP[i][j]) {
+                ediblePly[i >> 3][i & 7] += board->useableNumPiece[j >> 3][j & 7];
+            }
+        }
+    }
+
     for (int i = 0; i < board->numPiece[ourTurn]; ++i) {
         ourPType = board->piece[ourTurn][i]->pieceType;
-        for (int j = 0; j < 16; ++j) {
-            if (!board->allPiece[theirTurn][j].isDead) {
-                theirPType = board->allPiece[theirTurn][j].pieceType;
-                if ((ourPType & 7) == PT_RC) {
-                    // cannon can jump-eat all enemy pieces
-                    ourScore += plyBasicScore[theirPType];
-                }
-                else {
-                    ourScore += (int)CAN_EAT_BY_MOVE[ourPType][theirPType] * plyBasicScore[theirPType];
-                }
-            }
+        if ((ourPType & 7) == PT_RP) {
+            ourScore += plyBasicScore[ourPType] * board->useableNumPiece[theirTurn][PT_RK] + ediblePly[ourTurn][ourPType & 7] + BOARD_POSITION_SCORE[board->piece[ourTurn][i]->pos];
+        }
+        else {
+            ourScore += plyBasicScore[ourPType] + ediblePly[ourTurn][ourPType & 7] + BOARD_POSITION_SCORE[board->piece[ourTurn][i]->pos];
         }
     }
+
     for (int i = 0; i < board->numPiece[theirTurn]; ++i) {
         theirPType = board->piece[theirTurn][i]->pieceType;
-        for (int j = 0; j < 16; ++j) {
-            if (!board->allPiece[ourTurn][j].isDead) {
-                ourPType = board->allPiece[ourTurn][j].pieceType;
-                if ((theirPType & 7) == PT_RC) {
-                    // cannon can jump-eat all enemy pieces
-                    theirScore += plyBasicScore[ourPType];
-                }
-                else {
-                    theirScore += (int)CAN_EAT_BY_MOVE[theirPType][ourPType] * plyBasicScore[ourPType];
-                }
-            }
+        if ((theirPType& 7) == PT_RP) {
+            theirScore += plyBasicScore[ourPType] * board->useableNumPiece[theirTurn][PT_RK] + ediblePly[theirTurn][theirPType& 7] + BOARD_POSITION_SCORE[board->piece[theirTurn][i]->pos];
+        }
+        else {
+            theirScore += plyBasicScore[ourPType] + ediblePly[theirTurn][theirPType& 7] + BOARD_POSITION_SCORE[board->piece[theirTurn][i]->pos];
         }
     }
+
     ourScore += (board->numPiece[ourTurn]) << 7;
     theirScore += (board->numPiece[theirTurn]) << 7;
     return ourScore - theirScore;
@@ -218,6 +220,7 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
     fprintf(stdout, "genMove::depth %d, time: T = %d, t = %d\n", node->board.depth, leftTimeMs, timeLimitMs);
     fflush(stdout);
 
+    searchCounter = 0;
     // iterative deepening
     std::pair<int, int> bestCandidate = iterativeDeepening(node, timeLimitMs);
     int bestChild = bestCandidate.first;
@@ -236,7 +239,7 @@ Move SecondStrategy::genMove(TreeNode* node, int leftTimeMs) {
         return node->child[bestChild]->move;
     }
     else if (bestScore <= currentBoardScore && node->board.numPieceUnflipped[rootColor] > 0) {
-        fprintf(stdout, "genMove::use flip, numPieceUnflipped = red[%d], black[%d]\n", node->board.numPieceUnflipped[TURN_RED], node->board.numPieceUnflipped[TURN_BLACK]);
+        //fprintf(stdout, "genMove::use flip, numPieceUnflipped = red[%d], black[%d]\n", node->board.numPieceUnflipped[TURN_RED], node->board.numPieceUnflipped[TURN_BLACK]);
         return getMoveListFlip(&node->board, rootColor);
     }
     else {
@@ -257,10 +260,19 @@ std::pair<int, int> SecondStrategy::iterativeDeepening(TreeNode* node, int timeL
     searchExceedTimeLimit = false;
 
     while (true) {
-        fprintf(stdout, "ID::search depth %d\n", depth);
+        //fprintf(stdout, "ID::search depth %d\n", depth);
         for (int c = 0; c < node->numChild; ++c) {
-            score = search(node->child[c], INT_MIN, INT_MAX, depth, endTimeMs);
-            // score = searchNegaScout(node, depth, INT_MIN, INT_MAX, startTime, endTimeMs);
+            // score = search(node->child[c], INT_MIN, INT_MAX, depth, endTimeMs);
+            // negaScout searched from the child, so we get a minus score.
+            score = (-1) * searchNegaScout(node->child[c], depth, INT_MIN, INT_MAX, endTimeMs);
+            /*
+            fprintf(stdout, "ID::depth %2d, child %2d, move %d %c -> %d %c, score %5d\n",
+                    depth, c, node->child[c]->move.first, PIECE2CHAR[node->board.block[node->child[c]->move.first]->pieceType],
+                    node->child[c]->move.second, 
+                    (node->board.block[node->child[c]->move.second]->isDead ? '_' : PIECE2CHAR[node->board.block[node->child[c]->move.second]->pieceType]), 
+                    score);
+            fflush(stdout);
+            */
             if (searchExceedTimeLimit) {
                 // return bestScoreForFinishedDepth and bestChildForFinishedDepth
                 break;
@@ -289,34 +301,43 @@ std::pair<int, int> SecondStrategy::iterativeDeepening(TreeNode* node, int timeL
     return std::pair<int, int>(bestChildForFinishedDepth, bestScoreForFinishedDepth);
 }
 
+
 int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int beta, int endTimeMs) {
     int originalAlpha = alpha;
+    int currentLowerBound = INT_MIN;
+    int currentUpperBound = beta;
 
     HashMapNode* tableResult = transpositionTable->get(node->board.hash);
-    if (tableResult != nullptr && tableResult->searchDepth >= depth) {
-        if (tableResult->exactValueFlag == FLAG_EXACT) {
-            return tableResult->score;
+    if (tableResult != nullptr) {
+        if (tableResult->searchDepth >= depth) {
+            if (tableResult->exactValueFlag == FLAG_EXACT) {
+                return tableResult->score;
+            }
+            else if (tableResult->exactValueFlag == FLAG_LOWERBOUND) {
+                alpha = std::max(alpha, tableResult->score);
+            }
+            else if (tableResult->exactValueFlag == FLAG_UPPERBOUND) {
+                beta = std::min(beta, tableResult->score);
+            }
+            if (alpha >= beta) {
+                // cut off
+                return tableResult->score;
+            }
         }
-        else if (tableResult->exactValueFlag == FLAG_LOWERBOUND) {
-            alpha = std::max(alpha, tableResult->score);
-        }
-        else if (tableResult->exactValueFlag == FLAG_UPPERBOUND) {
-            beta = std::min(beta, tableResult->score);
-        }
-
-        if (alpha >= beta) {
-            // cut off
-            return tableResult->score;
+        else {
+            if (tableResult->exactValueFlag == FLAG_EXACT) {
+                currentUpperBound = tableResult->score;
+            }
         }
     }
 
     int currentTimeMs = Utility::timer();
 
-    if (node->board.winner == rootColor) {
+    if (node->board.winner == node->board.turn) {
         return 100000;
     }
 
-    if (node->board.winner == !rootColor) {
+    if (node->board.winner == !node->board.turn) {
         return -100000;
     }
 
@@ -338,8 +359,6 @@ int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int be
     }
 
     int temp;
-    int currentLowerBound = INT_MIN;
-    int currentUpperBound = beta;
     for (int i = 0; i < node->numChild; ++i) {
         temp = (-1) * searchNegaScout(node->child[i], depth - 1, (-1) * currentUpperBound, (-1) * std::max(alpha, currentLowerBound), endTimeMs);
         if (temp > currentLowerBound) {
@@ -355,17 +374,20 @@ int SecondStrategy::searchNegaScout(TreeNode* node, int depth, int alpha, int be
         if (currentLowerBound >= beta) {
             // beta cut-off
             // save to hashTable?
-            transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_LOWERBOUND);
-            return currentLowerBound;
+            // transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_LOWERBOUND);
+            break;
         }
         // set up a null window
         currentUpperBound = std::max(alpha, currentLowerBound) + 1; 
     }
-    if (currentLowerBound >= originalAlpha) {
-        transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_EXACT);
-    }
-    else {
+    if (currentLowerBound <= originalAlpha && !searchExceedTimeLimit) {
         transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_UPPERBOUND);
+    }
+    else if (currentLowerBound >= beta && !searchExceedTimeLimit) {
+        transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_LOWERBOUND);
+    }
+    else if (!searchExceedTimeLimit){
+        transpositionTable->insert(node->board.hash, depth, currentLowerBound, FLAG_EXACT);
     }
     return currentLowerBound;
 }

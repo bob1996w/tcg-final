@@ -21,6 +21,7 @@ public:
     Move genMove(TreeNode* node, int leftTimeMs);
 
 private:
+    int searchCounter = 0;
     int rootColor = 2; // TURN_INITIAL
     bool searchExceedTimeLimit = false;
     static const int strategyTag = 2;
