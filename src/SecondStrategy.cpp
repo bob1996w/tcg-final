@@ -594,6 +594,59 @@ Move SecondStrategy::getMoveListFlip(Board* board, int turn) {
 MoveList SecondStrategy::getMoveListEat(Board* board, int turn) {
     MoveList list;
     // int turn = board->turn;
+    /*
+    // not-finished move ordering
+    // pawn eat king
+    if (board->useableNumPiece[turn][PT_RP] > 0 && board->useableNumPiece[!turn][PT_RK] > 0) {
+        for (int i = 0; i < 5; ++i) {
+            int src = board->allPiece[turn][allPieceTypePos[PT_RP] + i].pos;
+            if (src != -1 && !board->allPiece[turn][allPieceTypePos[PT_RP]+i].isDead) {
+                for (int didx = 0; didx < MOVE_NUM[src]; ++didx) {
+                    int dst = src + MOVE_DIR[src][didx];
+                    if (board->block[dst]!=nullptr && !board->block[dst]->isDead && (board->block[dst]->pieceType & 7) == PT_RK) {
+                        list.emplace_back(src, dst);
+                    }
+                }
+            }
+        }
+    }
+    // cannon
+    for (int i = 9; i < 11; ++i) {
+        if (board->allPiece[turn][i].pos != -1 && !board->allPiece[turn][i].isDead) {
+            int src = board->allPiece[turn][i].pos;
+            int pType = board->allPiece[turn][i].pieceType;
+            for (int jidx = 0; jidx < JUMP_NUM[src]; ++jidx) {
+                bool existJumpedPiece = false;
+                for (int dst = src + JUMP_DIR[src][jidx]; !IS_OUT[dst]; dst += JUMP_DIR[src][jidx]) {
+                    if (board->block[dst] == nullptr || !board->block[dst]->isDead) {
+                        if (!existJumpedPiece){existJumpedPiece = true;}
+                        else if (board->block[dst] != nullptr && CAN_EAT_BY_JUMP[pType][board->block[dst]->pieceType]) {
+                            list.emplace_back(src, dst);
+                            break;
+                        }
+                        else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // search from high to low
+    for (int i = 0; i < 16; ++i) {
+        if (board->allPiece[turn][i].pos != -1 && !board->allPiece[turn][i].isDead) {
+            int src = board->allPiece[turn][i].pos;
+            int pType = board->allPiece[turn][i].pieceType;
+            for (int didx = 0; didx < MOVE_NUM[src]; ++didx) {
+                int dst = src + MOVE_DIR[src][didx];
+                if (board->block[dst]!=nullptr && !(board->block[dst]->isDead) && CAN_EAT_BY_MOVE[pType][board->block[dst]->pieceType]) {
+                    list.emplace_back(src, dst);
+                }
+            }
+        }
+    }
+    */
+    
     for (int pidx = 0; pidx < board->numPiece[turn]; ++pidx) {
         Piece* pc = board->piece[turn][pidx];
         int src = pc->pos;
